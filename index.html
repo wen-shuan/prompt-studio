@@ -184,8 +184,8 @@
     <div class="page on" id="page-builder">
       <div class="card">
         <h3><span class="zh">✏️ 主體描述</span><span class="en">subject — 想畫什麼？可自由輸入</span></h3>
-        <input type="text" id="subjectInput" placeholder="例：一位撐著透明雨傘的長髮少女（中英文皆可）">
-        <div class="hint">下方也有常用主體可以直接點選，與輸入內容可並用</div>
+        <input type="text" id="subjectInput" placeholder="例：黑髮的那位比銀髮的高半個頭（中英文皆可）">
+        <div class="hint">單人畫面用下方「性別」分類當主體即可；雙人時兩人各自的差異（誰的髮色是哪種）可寫在這裡補充</div>
       </div>
       <div id="categories"></div>
       <div class="btn-row">
@@ -254,12 +254,13 @@
 "use strict";
 /* ============ 詞庫資料 ============ */
 const CATEGORIES = [
-  { id:"subject", zh:"👤 常用主體", en:"subject", items:[
-    {zh:"一位年輕女子",en:"a young woman"},{zh:"一位白髮老人",en:"an elderly man with white hair"},
-    {zh:"一隻橘貓",en:"an orange tabby cat"},{zh:"一條巨龍",en:"a majestic dragon"},
-    {zh:"一位太空人",en:"an astronaut"},{zh:"一個復古機器人",en:"a retro robot"},
-    {zh:"一隻狐狸",en:"a fox"},{zh:"一艘帆船",en:"a sailboat"},
-    {zh:"一座古堡",en:"an ancient castle"},{zh:"盛開的櫻花樹",en:"a blooming cherry blossom tree"}
+  { id:"subject", zh:"👥 雙人組合", en:"duo — 單人直接用下方「性別」即可", items:[
+    {zh:"一對戀人",en:"a couple deeply in love"},{zh:"一男一女",en:"a man and a woman"},
+    {zh:"兩位少女",en:"two young girls"},{zh:"兩位少年",en:"two young boys"},
+    {zh:"兩位女性",en:"two women"},{zh:"兩位男性",en:"two men"},
+    {zh:"青梅竹馬二人",en:"two childhood friends"},{zh:"一對姊妹",en:"two sisters"},
+    {zh:"一對兄弟",en:"two brothers"},{zh:"主僕二人",en:"a master and their loyal servant"},
+    {zh:"騎士與公主",en:"a knight and a princess"},{zh:"吸血鬼與人類",en:"a vampire and a human"}
   ]},
   { id:"gender", zh:"🚻 性別", en:"gender", group:"appearance", items:[
     {zh:"一位女性",en:"a woman"},{zh:"一位男性",en:"a man"},
@@ -271,27 +272,64 @@ const CATEGORIES = [
     {zh:"二十歲出頭",en:"youthful, in their early twenties"},{zh:"三十歲上下",en:"composed, around their thirties"},
     {zh:"成熟中年",en:"mature and middle-aged"},{zh:"年長優雅",en:"elderly and graceful"}
   ]},
-  { id:"hairColor", zh:"🎨 髮色", en:"hair color", group:"appearance", items:[
-    {zh:"烏黑",en:"jet-black"},{zh:"銀白",en:"silver-white"},
-    {zh:"白金",en:"platinum blonde"},{zh:"亞麻棕",en:"ash-brown"},
-    {zh:"粉色",en:"pastel pink"},{zh:"湛藍",en:"deep blue"},
-    {zh:"酒紅",en:"wine-red"},{zh:"漸層雙色",en:"gradient two-tone"},
-    {zh:"薄荷綠",en:"mint-green"},{zh:"紫羅蘭",en:"violet"}
+  { id:"hairColor", zh:"🎨 髮色（可多選，順序＝底色→第二色）", en:"hair color", group:"appearance", items:[
+    {zh:"烏黑",en:"jet-black"},{zh:"深巧克力棕",en:"dark chocolate brown"},
+    {zh:"蜂蜜茶棕",en:"warm honey-brown"},{zh:"奶茶灰棕",en:"milk-tea beige"},
+    {zh:"亞麻棕",en:"ash-brown"},{zh:"白金",en:"platinum blonde"},
+    {zh:"亞麻金",en:"flaxen gold"},{zh:"銀白",en:"silver-white"},
+    {zh:"純白",en:"snow-white"},{zh:"煙燻灰",en:"smoky grey"},
+    {zh:"櫻花粉",en:"cherry-blossom pink"},{zh:"珊瑚粉",en:"coral pink"},
+    {zh:"薰衣草紫",en:"lavender purple"},{zh:"深梅紫",en:"deep plum purple"},
+    {zh:"湛藍",en:"deep blue"},{zh:"寶石藍",en:"sapphire blue"},
+    {zh:"藏青",en:"navy blue"},{zh:"青綠",en:"teal"},
+    {zh:"祖母綠",en:"emerald green"},{zh:"薄荷綠",en:"mint-green"},
+    {zh:"酒紅",en:"wine-red"},{zh:"橘紅",en:"fiery orange-red"}
   ]},
-  { id:"hairStyle", zh:"💇 髮型", en:"hairstyle", group:"appearance", items:[
-    {zh:"飄逸長髮",en:"long flowing hair"},{zh:"高雙馬尾",en:"high twin tails"},
-    {zh:"俐落短鮑伯",en:"a sleek short bob"},{zh:"高馬尾",en:"a high ponytail"},
-    {zh:"柔軟波浪捲",en:"soft wavy curls"},{zh:"鬆散麻花辮",en:"a loose braid"},
-    {zh:"優雅盤髮",en:"an elegant updo"},{zh:"狼尾剪",en:"a wolf cut"},
-    {zh:"姬髮式齊瀏海",en:"a hime cut with straight bangs"},{zh:"凌亂短髮",en:"messy short hair"}
+  { id:"hairTech", zh:"🌈 染髮方式（搭配上面選的髮色）", en:"dye technique", group:"appearance", items:[
+    {zh:"漸層染（底色→第二色）",en:"gradient dye"},
+    {zh:"挑染（底色＋第二色挑染）",en:"highlight streaks"},
+    {zh:"內層染（第二色藏內層）",en:"hidden underlayer dye"},
+    {zh:"髮尾染（髮尾第二色）",en:"dip-dyed ends"}
+  ]},
+  { id:"hairStyle", zh:"💇‍♀️ 髮型 / 瀏海（女性・通用）", en:"hairstyle (feminine)", group:"appearance", items:[
+    {zh:"飄逸長髮",en:"long flowing hair"},{zh:"黑長直感長髮",en:"sleek long straight hair"},
+    {zh:"中分長捲",en:"center-parted long waves"},{zh:"柔軟波浪捲",en:"soft wavy curls"},
+    {zh:"蓬鬆羊毛捲",en:"fluffy wool-like curls"},{zh:"內彎及肩中長髮",en:"shoulder-length hair curling softly inward"},
+    {zh:"外翹短髮",en:"a flipped-out short cut"},{zh:"俐落短鮑伯",en:"a sleek short bob"},
+    {zh:"層次蝴蝶剪",en:"a layered butterfly cut"},{zh:"狼尾剪",en:"a wolf cut"},
+    {zh:"高雙馬尾",en:"high twin tails"},{zh:"低雙馬尾",en:"low twin tails"},
+    {zh:"高馬尾",en:"a high ponytail"},{zh:"低馬尾",en:"a low ponytail"},
+    {zh:"側馬尾",en:"a side ponytail"},{zh:"鬆散麻花辮",en:"a loose braid"},
+    {zh:"雙麻花辮",en:"twin braids"},{zh:"優雅盤髮",en:"an elegant updo"},
+    {zh:"高丸子頭",en:"a high bun"},{zh:"半丸子頭",en:"a half-up bun"},
+    {zh:"姬髮式齊瀏海",en:"a hime cut with straight bangs"},{zh:"空氣瀏海",en:"airy see-through bangs"},
+    {zh:"八字瀏海",en:"curtain bangs"},{zh:"齊瀏海",en:"blunt bangs"},
+    {zh:"凌亂短髮",en:"messy short hair"}
+  ]},
+  { id:"hairStyleM", zh:"💇‍♂️ 髮型（男性・中性）", en:"hairstyle (masculine)", group:"appearance", items:[
+    {zh:"及肩中長髮",en:"shoulder-length medium-long hair"},{zh:"耳下微捲中長髮",en:"wavy medium-length hair falling past the ears"},
+    {zh:"及腰長髮",en:"waist-length long hair"},{zh:"低束長馬尾",en:"long hair tied in a low ponytail"},
+    {zh:"半束公子髻",en:"hair half tied back in a small topknot"},{zh:"武士高束髻",en:"a high samurai-style topknot"},
+    {zh:"韓系逗號瀏海",en:"Korean-style comma bangs"},{zh:"中分紋理燙",en:"a center-parted textured perm"},
+    {zh:"油頭後梳",en:"slicked-back hair"},{zh:"削邊油頭",en:"a slicked-back undercut"},
+    {zh:"亂翹短髮",en:"tousled short hair"},{zh:"清爽短髮",en:"a clean short cut"},
+    {zh:"額前碎瀏海",en:"a messy fringe"},{zh:"鯔魚頭",en:"a mullet"},
+    {zh:"寸頭",en:"a buzz cut"}
   ]},
   { id:"eyes", zh:"👁️ 眼睛", en:"eyes", group:"appearance", items:[
-    {zh:"琥珀色眼眸",en:"warm amber eyes"},{zh:"翠綠眼眸",en:"emerald-green eyes"},
-    {zh:"深藍眼眸",en:"deep blue eyes"},{zh:"緋紅眼眸",en:"crimson eyes"},
-    {zh:"金色眼眸",en:"golden eyes"},{zh:"紫色眼眸",en:"violet eyes"},
+    {zh:"琥珀色眼眸",en:"warm amber eyes"},{zh:"蜜糖棕眼眸",en:"honey-brown eyes"},
+    {zh:"深棕近黑眼眸",en:"deep dark-brown eyes"},{zh:"榛果綠棕眼眸",en:"hazel eyes"},
+    {zh:"翠綠眼眸",en:"emerald-green eyes"},{zh:"湖水藍綠眼眸",en:"aquamarine eyes"},
+    {zh:"天空藍眼眸",en:"clear sky-blue eyes"},{zh:"冰藍眼眸",en:"icy pale-blue eyes"},
+    {zh:"深藍眼眸",en:"deep blue eyes"},{zh:"銀灰眼眸",en:"silver-grey eyes"},
+    {zh:"霧灰色眼眸",en:"misty grey eyes"},{zh:"薰衣草紫眼眸",en:"soft lavender eyes"},
+    {zh:"紫水晶眼眸",en:"amethyst-violet eyes"},{zh:"玫瑰粉眼眸",en:"rose-pink eyes"},
+    {zh:"緋紅眼眸",en:"crimson eyes"},{zh:"酒紅眼眸",en:"wine-red eyes"},
+    {zh:"金色眼眸",en:"golden eyes"},{zh:"漸層雙色瞳",en:"gradient two-tone eyes"},
     {zh:"異色瞳（藍金）",en:"heterochromatic eyes, one blue and one gold"},
-    {zh:"溫柔垂眼",en:"gentle downturned eyes"},{zh:"銳利上挑眼",en:"sharp upturned eyes"},
-    {zh:"霧灰色眼眸",en:"misty grey eyes"}
+    {zh:"貓瞳（豎瞳孔）",en:"cat-like eyes with slit pupils"},
+    {zh:"星空感眼眸",en:"sparkling galaxy-like eyes"},
+    {zh:"溫柔垂眼",en:"gentle downturned eyes"},{zh:"銳利上挑眼",en:"sharp upturned eyes"}
   ]},
   { id:"skin", zh:"🫧 膚色", en:"skin tone", group:"appearance", items:[
     {zh:"白皙瓷肌",en:"fair porcelain skin"},{zh:"冷白皮",en:"cool pale skin"},
@@ -305,44 +343,144 @@ const CATEGORIES = [
     {zh:"眼下淚痣",en:"a small teardrop beauty mark under the eye"},{zh:"濃眉",en:"bold thick eyebrows"},
     {zh:"薄唇",en:"thin elegant lips"},{zh:"酒窩",en:"charming dimples"}
   ]},
-  { id:"outfit", zh:"👗 服裝搭配", en:"outfit", group:"appearance", items:[
+  { id:"outfit", zh:"👗 整套服裝 / 風格", en:"full outfit", group:"appearance", items:[
     {zh:"白色飄逸連身裙",en:"a flowing white dress"},{zh:"日式學生制服",en:"a Japanese school uniform"},
     {zh:"典雅和服",en:"an elegant kimono"},{zh:"哥德蘿莉裝",en:"an elaborate gothic lolita outfit"},
-    {zh:"休閒街頭風",en:"casual streetwear"},{zh:"修身西裝",en:"a tailored suit"},
-    {zh:"華麗騎士鎧甲",en:"ornate knight armor"},{zh:"傳統漢服",en:"traditional hanfu robes"},
-    {zh:"寬鬆連帽衫",en:"an oversized hoodie"},{zh:"華美晚禮服",en:"a glamorous evening gown"},
-    {zh:"巫師長袍",en:"a wizard's long robe"},{zh:"機能風外套",en:"a techwear jacket"}
+    {zh:"休閒街頭風",en:"casual streetwear"},{zh:"韓系極簡穿搭",en:"a minimalist Korean-style outfit"},
+    {zh:"日系城市男孩風",en:"a Japanese city-boy casual outfit"},{zh:"Y2K 千禧風",en:"a Y2K-inspired outfit"},
+    {zh:"深色學院風",en:"dark academia attire"},{zh:"學院預科生風",en:"a preppy academy outfit"},
+    {zh:"美式復古穿搭",en:"an American retro vintage outfit"},{zh:"運動休閒風",en:"an athleisure outfit"},
+    {zh:"修身西裝",en:"a tailored suit"},{zh:"正式燕尾服",en:"a formal tuxedo"},
+    {zh:"小禮服洋裝",en:"an elegant cocktail dress"},{zh:"華美晚禮服",en:"a glamorous evening gown"},
+    {zh:"婚紗",en:"a flowing wedding dress"},{zh:"合身旗袍",en:"a fitted qipao"},
+    {zh:"傳統漢服",en:"traditional hanfu robes"},{zh:"華麗騎士鎧甲",en:"ornate knight armor"},
+    {zh:"巫師長袍",en:"a wizard's long robe"},{zh:"機能風外套",en:"a techwear jacket"},
+    {zh:"寬鬆連帽衫",en:"an oversized hoodie"},{zh:"絲質睡衣",en:"silk pajamas"},
+    {zh:"居家休閒服",en:"cozy loungewear"}
+  ]},
+  { id:"topWear", zh:"👕 上著（可與下著混搭）", en:"top", group:"appearance", items:[
+    {zh:"挺括白襯衫",en:"a crisp white shirt"},{zh:"寬鬆白T恤",en:"an oversized white T-shirt"},
+    {zh:"柔軟針織毛衣",en:"a soft knit sweater"},{zh:"高領毛衣",en:"a turtleneck sweater"},
+    {zh:"開襟針織衫",en:"a cardigan"},{zh:"連帽衫",en:"a hoodie"},
+    {zh:"皮夾克",en:"a leather jacket"},{zh:"牛仔外套",en:"a denim jacket"},
+    {zh:"西裝外套",en:"a tailored blazer"},{zh:"長版風衣",en:"a long trench coat"},
+    {zh:"毛呢大衣",en:"a wool overcoat"},{zh:"棒球外套",en:"a varsity jacket"},
+    {zh:"格紋法蘭絨襯衫",en:"a plaid flannel shirt"},{zh:"短版上衣",en:"a cropped top"},
+    {zh:"細肩帶背心",en:"a camisole"}
+  ]},
+  { id:"bottomWear", zh:"👖 下著", en:"bottom", group:"appearance", items:[
+    {zh:"修身牛仔褲",en:"slim-fit jeans"},{zh:"直筒寬褲",en:"wide-leg trousers"},
+    {zh:"西裝褲",en:"tailored slacks"},{zh:"工裝褲",en:"cargo pants"},
+    {zh:"運動束口褲",en:"track pants"},{zh:"皮褲",en:"leather pants"},
+    {zh:"丹寧短褲",en:"denim shorts"},{zh:"百褶裙",en:"a pleated skirt"},
+    {zh:"及膝裙",en:"a knee-length skirt"},{zh:"開衩長裙",en:"a long skirt with a side slit"},
+    {zh:"飄逸長紗裙",en:"a flowing tulle skirt"},{zh:"高腰A字裙",en:"a high-waisted A-line skirt"}
+  ]},
+  { id:"shoes", zh:"👟 鞋子", en:"shoes", group:"appearance", items:[
+    {zh:"小白鞋",en:"clean white sneakers"},{zh:"帆布鞋",en:"canvas sneakers"},
+    {zh:"厚底運動鞋",en:"chunky platform sneakers"},{zh:"瑪莉珍鞋",en:"Mary Jane shoes"},
+    {zh:"樂福鞋",en:"loafers"},{zh:"芭蕾平底鞋",en:"ballet flats"},
+    {zh:"優雅高跟鞋",en:"elegant high heels"},{zh:"短靴",en:"ankle boots"},
+    {zh:"過膝長靴",en:"knee-high boots"},{zh:"馬丁靴",en:"lace-up combat boots"},
+    {zh:"繫帶涼鞋",en:"strappy sandals"},{zh:"木屐",en:"traditional geta sandals"},
+    {zh:"擦亮皮鞋",en:"polished leather dress shoes"}
   ]},
   { id:"accessory", zh:"💍 配件", en:"accessories", group:"appearance", items:[
-    {zh:"圓框眼鏡",en:"round glasses"},{zh:"垂墜耳環",en:"dangling earrings"},
-    {zh:"髮間蝴蝶結",en:"a ribbon bow in the hair"},{zh:"細緻頸鍊",en:"a delicate choker"},
-    {zh:"寬簷帽",en:"a wide-brimmed hat"},{zh:"溫暖圍巾",en:"a cozy scarf"},
-    {zh:"掛頸耳機",en:"headphones around the neck"},{zh:"銀飾",en:"silver jewelry"},
-    {zh:"裝飾髮夾",en:"decorative hair clips"},{zh:"薄紗面紗",en:"a sheer veil"}
+    {zh:"圓框眼鏡",en:"round glasses"},{zh:"細金屬框眼鏡",en:"thin metal-framed glasses"},
+    {zh:"墨鏡",en:"sunglasses"},{zh:"垂墜耳環",en:"dangling earrings"},
+    {zh:"單邊耳骨夾",en:"an ear cuff"},{zh:"細緻頸鍊",en:"a delicate choker"},
+    {zh:"珍珠項鍊",en:"a pearl necklace"},{zh:"十字架項鍊",en:"a cross pendant"},
+    {zh:"手鍊",en:"a charm bracelet"},{zh:"戒指",en:"delicate rings"},
+    {zh:"手錶",en:"a classic wristwatch"},{zh:"銀飾",en:"silver jewelry"},
+    {zh:"髮間蝴蝶結",en:"a ribbon bow in the hair"},{zh:"裝飾髮夾",en:"decorative hair clips"},
+    {zh:"髮帶",en:"a headband"},{zh:"貝雷帽",en:"a beret"},
+    {zh:"棒球帽",en:"a baseball cap"},{zh:"針織毛帽",en:"a knit beanie"},
+    {zh:"寬簷帽",en:"a wide-brimmed hat"},{zh:"領帶",en:"a necktie"},
+    {zh:"領結",en:"a bow tie"},{zh:"溫暖圍巾",en:"a cozy scarf"},
+    {zh:"白手套",en:"white gloves"},{zh:"掛頸耳機",en:"headphones around the neck"},
+    {zh:"側背小包",en:"a small crossbody bag"},{zh:"帆布托特包",en:"a canvas tote bag"},
+    {zh:"蕾絲陽傘",en:"a lace parasol"},{zh:"薄紗面紗",en:"a sheer veil"}
   ]},
-  { id:"action", zh:"🏃 動作 / 狀態", en:"action", items:[
+  { id:"action", zh:"🚶 單人動作 / 狀態", en:"solo action", items:[
     {zh:"在雨中行走",en:"walking in the rain"},{zh:"凝視遠方",en:"gazing into the distance"},
-    {zh:"在空中飛翔",en:"soaring through the sky"},{zh:"靜靜坐著",en:"sitting quietly"},
-    {zh:"全力奔跑",en:"running at full speed"},{zh:"閱讀一本舊書",en:"reading an old book"},
+    {zh:"靜靜坐著",en:"sitting quietly"},{zh:"閱讀一本舊書",en:"reading an old book"},
     {zh:"優雅起舞",en:"dancing gracefully"},{zh:"安然沉睡",en:"sleeping peacefully"},
-    {zh:"回眸微笑",en:"looking back with a gentle smile"},{zh:"彈奏樂器",en:"playing a musical instrument"}
+    {zh:"回眸微笑",en:"looking back with a gentle smile"},{zh:"彈奏樂器",en:"playing a musical instrument"},
+    {zh:"倚著窗邊",en:"leaning against a window"},{zh:"托腮出神",en:"resting their chin on one hand, lost in thought"},
+    {zh:"閉眼感受微風",en:"eyes closed, feeling the breeze"},{zh:"撩起被風吹亂的頭髮",en:"brushing back wind-tossed hair"},
+    {zh:"伸手朝向鏡頭",en:"reaching a hand toward the viewer"},{zh:"蹲坐抱膝",en:"crouching with arms wrapped around their knees"},
+    {zh:"低頭淺笑",en:"looking down with a soft smile"},{zh:"仰望天空",en:"looking up at the sky"},
+    {zh:"側躺",en:"lying on their side"},{zh:"含淚欲泣",en:"holding back tears"},
+    {zh:"全力奔跑",en:"running at full speed"},{zh:"在空中飛翔",en:"soaring through the sky"}
+  ]},
+  { id:"duoAction", zh:"👫 雙人互動動作", en:"duo interaction", items:[
+    {zh:"十指相扣",en:"holding hands with fingers interlaced"},{zh:"溫柔相擁",en:"embracing each other tenderly"},
+    {zh:"額頭相抵",en:"resting their foreheads together"},{zh:"深情對視",en:"gazing into each other's eyes"},
+    {zh:"背靠背坐著",en:"sitting back to back"},{zh:"共撐一把傘",en:"sharing one umbrella"},
+    {zh:"替對方把頭髮別到耳後",en:"one gently tucking the other's hair behind their ear"},
+    {zh:"咬耳朵說悄悄話",en:"whispering a secret into the other's ear"},
+    {zh:"摟著對方肩膀",en:"one arm draped around the other's shoulder"},
+    {zh:"依偎在對方肩頭",en:"leaning on the other's shoulder"},
+    {zh:"牽手奔跑",en:"running hand in hand"},{zh:"相擁共舞",en:"dancing together in each other's arms"},
+    {zh:"公主抱",en:"one carrying the other in a princess carry"},
+    {zh:"打鬧嬉戲",en:"playfully teasing each other"},
+    {zh:"擦肩回眸",en:"brushing past each other and looking back"},
+    {zh:"隔著窗相望",en:"looking at each other through a window"},
+    {zh:"勾小指約定",en:"making a pinky promise"},{zh:"分食同一份甜點",en:"sharing a single dessert"},
+    {zh:"為對方戴上圍巾",en:"one wrapping a scarf around the other"},
+    {zh:"擋在對方身前保護",en:"one shielding the other protectively"}
+  ]},
+  { id:"duoMood", zh:"💞 雙人氛圍 / 關係張力", en:"duo mood", items:[
+    {zh:"甜蜜親暱",en:"sweetly intimate"},{zh:"曖昧未明的張力",en:"charged with unspoken romantic tension"},
+    {zh:"青梅竹馬的自在",en:"comfortably familiar, like lifelong friends"},
+    {zh:"久別重逢的悸動",en:"trembling with the joy of a long-awaited reunion"},
+    {zh:"離別的不捨",en:"heavy with the sorrow of parting"},
+    {zh:"相互守護",en:"fiercely protective of each other"},
+    {zh:"針鋒相對的火花",en:"crackling with confrontational sparks"},
+    {zh:"靜謐的陪伴",en:"quietly companionable"},
+    {zh:"心動的瞬間",en:"capturing the exact moment of falling in love"},
+    {zh:"帶著禁忌感",en:"tinged with forbidden longing"},
+    {zh:"依賴與撒嬌",en:"affectionately clingy and doting"},
+    {zh:"無言的默契",en:"bound by wordless understanding"}
   ]},
   { id:"scene", zh:"🏞️ 場景 / 背景", en:"scene", items:[
-    {zh:"未來城市街道",en:"a futuristic city street"},{zh:"迷霧森林",en:"a misty forest"},
-    {zh:"黃昏的海邊",en:"a beach at dusk"},{zh:"雪山之巔",en:"a snowy mountain peak"},
-    {zh:"霓虹夜市",en:"a neon-lit night market"},{zh:"老舊書店",en:"a cluttered old bookstore"},
-    {zh:"宇宙星雲之中",en:"a colorful cosmic nebula"},{zh:"日式庭園",en:"a tranquil Japanese garden"},
-    {zh:"古文明廢墟",en:"ancient overgrown ruins"},{zh:"溫馨咖啡館",en:"a cozy café"},
-    {zh:"無邊花田",en:"an endless field of flowers"},{zh:"雨後的街道",en:"a rain-soaked street"}
+    {zh:"雨後的街道",en:"a rain-soaked street"},{zh:"放學後的夕陽教室",en:"an empty classroom at sunset"},
+    {zh:"深夜便利商店",en:"a late-night convenience store glowing in the dark"},
+    {zh:"夜晚的屋頂天台",en:"a rooftop at night overlooking the city"},
+    {zh:"夏日祭典燈籠街",en:"a summer festival street lined with lanterns"},
+    {zh:"綻放的煙火夜空下",en:"under a night sky blooming with fireworks"},
+    {zh:"幾乎無人的電車車廂",en:"a nearly empty train car"},
+    {zh:"圖書館安靜一隅",en:"a quiet corner of a grand library"},
+    {zh:"遊樂園摩天輪前",en:"in front of a Ferris wheel at an amusement park"},
+    {zh:"星空下的草原",en:"a grassy meadow under a starry night sky"},
+    {zh:"陽光溫室花房",en:"a sunlit glasshouse overflowing with plants"},
+    {zh:"積雪的神社",en:"a snow-covered shrine"},{zh:"日式庭園",en:"a tranquil Japanese garden"},
+    {zh:"巷弄裡的老茶館",en:"an old teahouse tucked in a narrow alley"},
+    {zh:"溫馨咖啡館",en:"a cozy café"},{zh:"老舊書店",en:"a cluttered old bookstore"},
+    {zh:"黃昏的海邊",en:"a beach at dusk"},{zh:"破曉的碼頭",en:"a quiet harbor at dawn"},
+    {zh:"無邊花田",en:"an endless field of flowers"},{zh:"迷霧森林",en:"a misty forest"},
+    {zh:"雪山之巔",en:"a snowy mountain peak"},{zh:"古文明廢墟",en:"ancient overgrown ruins"},
+    {zh:"中世紀市集街道",en:"a medieval market street"},{zh:"王宮大舞廳",en:"a grand palace ballroom"},
+    {zh:"未來城市街道",en:"a futuristic city street"},{zh:"霓虹夜市",en:"a neon-lit night market"},
+    {zh:"宇宙星雲之中",en:"a colorful cosmic nebula"},{zh:"夢境般的海底",en:"a dreamlike underwater world"}
   ]},
   { id:"style", zh:"🖌️ 藝術風格", en:"style", items:[
+    {zh:"日系動漫風",en:"anime-style illustration"},{zh:"賽璐璐動畫風",en:"cel-shaded anime artwork"},
+    {zh:"90年代復古動漫",en:"retro 90s anime aesthetic"},{zh:"吉卜力風格",en:"Ghibli-inspired hand-drawn animation style"},
+    {zh:"韓漫條漫風",en:"modern webtoon-style illustration"},{zh:"美漫風格",en:"American comic book style"},
+    {zh:"厚塗數位繪畫",en:"impasto-style digital painting with thick visible brushstrokes"},
     {zh:"水彩插畫",en:"watercolor illustration"},{zh:"古典油畫",en:"classical oil painting"},
-    {zh:"日系動漫風",en:"anime-style illustration"},{zh:"吉卜力風格",en:"Ghibli-inspired hand-drawn animation style"},
-    {zh:"賽博龐克",en:"cyberpunk digital art"},{zh:"像素藝術",en:"retro pixel art"},
-    {zh:"3D 渲染",en:"polished 3D render"},{zh:"寫實攝影",en:"photorealistic photograph"},
-    {zh:"極簡扁平插畫",en:"minimalist flat illustration"},{zh:"水墨畫",en:"traditional Chinese ink painting"},
+    {zh:"印象派油畫",en:"impressionist oil painting"},{zh:"新藝術風格（慕夏風）",en:"Art Nouveau illustration in the style of Alphonse Mucha"},
+    {zh:"浮世繪木刻版畫",en:"ukiyo-e woodblock print"},{zh:"水墨畫",en:"traditional Chinese ink painting"},
+    {zh:"鉛筆素描",en:"delicate pencil sketch"},{zh:"炭筆速寫",en:"expressive charcoal drawing"},
+    {zh:"色鉛筆插畫",en:"colored pencil illustration"},{zh:"粉彩畫",en:"soft pastel drawing"},
+    {zh:"童書繪本風",en:"children's storybook illustration"},{zh:"極簡扁平插畫",en:"minimalist flat illustration"},
+    {zh:"哥德暗黑風",en:"dark gothic artwork"},{zh:"蒸汽波美學",en:"vaporwave aesthetic"},
+    {zh:"夢核美學",en:"dreamcore aesthetic"},{zh:"賽博龐克",en:"cyberpunk digital art"},
     {zh:"蒸汽龐克",en:"steampunk artwork"},{zh:"復古海報",en:"vintage travel poster"},
-    {zh:"黏土定格動畫風",en:"claymation-style artwork"},{zh:"低多邊形",en:"low-poly 3D art"}
+    {zh:"像素藝術",en:"retro pixel art"},{zh:"3D 渲染",en:"polished 3D render"},
+    {zh:"黏土定格動畫風",en:"claymation-style artwork"},{zh:"低多邊形",en:"low-poly 3D art"},
+    {zh:"寫實攝影",en:"photorealistic photograph"}
   ]},
   { id:"lighting", zh:"💡 光線", en:"lighting", items:[
     {zh:"柔和自然光",en:"soft natural light"},{zh:"黃金時刻夕陽",en:"warm golden hour sunlight"},
@@ -396,23 +534,32 @@ const TEMPLATES = [
   { icon:"🌃", name:"賽博龐克夜市", desc:"霓虹 × 雨滴倒影 × 未來感", subject:"",
     pick:{style:["cyberpunk digital art"],scene:["a neon-lit night market"],lighting:["vibrant neon lighting"],
     composition:["sweeping wide-angle panorama"],mood:["sleek and futuristic"],details:["raindrops and shimmering reflections"]}},
-  { icon:"⛵", name:"水彩海邊風景", desc:"帆船 × 黃昏 × 留白寧靜", subject:"",
-    pick:{style:["watercolor illustration"],subject:["a sailboat"],scene:["a beach at dusk"],
-    lighting:["soft natural light"],composition:["sweeping wide-angle panorama"],mood:["serene and peaceful"],
-    details:["generous negative space"]}},
+  { icon:"☔", name:"雨中共傘", desc:"一男一女 × 共傘 × 曖昧張力", subject:"",
+    pick:{style:["anime-style illustration"],subject:["a man and a woman"],
+    duoAction:["sharing one umbrella","gazing into each other's eyes"],
+    duoMood:["charged with unspoken romantic tension"],scene:["a rain-soaked street"],
+    lighting:["pale moonlight"],composition:["medium shot"],
+    details:["raindrops and shimmering reflections"]}},
+  { icon:"🎆", name:"祭典煙火二人", desc:"青梅竹馬 × 夏祭 × 心動瞬間", subject:"",
+    pick:{style:["Ghibli-inspired hand-drawn animation style"],subject:["two childhood friends"],
+    duoAction:["making a pinky promise"],duoMood:["capturing the exact moment of falling in love"],
+    scene:["under a night sky blooming with fireworks"],lighting:["warm flickering candlelight"],
+    composition:["medium shot"],mood:["warm and nostalgic"]}},
   { icon:"📷", name:"電影感人像攝影", desc:"雨街 × 逆光 × 85mm 淺景深", subject:"",
     pick:{style:["photorealistic photograph"],gender:["a woman"],age:["composed, around their thirties"],
     hairColor:["jet-black"],hairStyle:["a sleek short bob"],outfit:["a techwear jacket"],action:["walking in the rain"],
     scene:["a rain-soaked street"],lighting:["dramatic backlighting"],composition:["close-up shot"],
     camera:["an 85mm portrait lens","shallow depth of field with creamy bokeh"],mood:["melancholic"],
     details:["raindrops and shimmering reflections"]}},
-  { icon:"🐉", name:"奇幻史詩油畫", desc:"巨龍 × 雪山 × 丁達爾光", subject:"",
-    pick:{style:["classical oil painting"],subject:["a majestic dragon"],action:["soaring through the sky"],
-    scene:["a snowy mountain peak"],lighting:["volumetric god rays"],composition:["dramatic low-angle view"],
+  { icon:"👑", name:"騎士與公主", desc:"守護 × 王宮舞廳 × 史詩", subject:"",
+    pick:{style:["classical oil painting"],subject:["a knight and a princess"],
+    duoAction:["one shielding the other protectively"],duoMood:["fiercely protective of each other"],
+    scene:["a grand palace ballroom"],lighting:["volumetric god rays"],composition:["dramatic low-angle view"],
     mood:["epic and grand"],details:["intricate fine details"]}},
-  { icon:"☕", name:"溫馨吉卜力咖啡館", desc:"橘貓 × 燭光 × 懷舊", subject:"",
-    pick:{style:["Ghibli-inspired hand-drawn animation style"],subject:["an orange tabby cat"],
-    action:["sleeping peacefully"],scene:["a cozy café"],lighting:["warm flickering candlelight"],
+  { icon:"☕", name:"溫馨吉卜力咖啡館", desc:"讀書少女 × 燭光 × 懷舊", subject:"",
+    pick:{style:["Ghibli-inspired hand-drawn animation style"],gender:["a young girl"],
+    hairColor:["warm honey-brown"],hairStyle:["a loose braid"],
+    action:["reading an old book"],scene:["a cozy café"],lighting:["warm flickering candlelight"],
     composition:["medium shot"],mood:["warm and nostalgic"],details:["a soft pastel color palette"]}}
 ];
 
@@ -448,11 +595,14 @@ function buildEN(){
   const g = id => picked(id).map(i=>i.en);
   const style=g("style"), action=g("action"), scene=g("scene"), light=g("lighting"),
         comp=g("composition"), cam=g("camera"), mood=g("mood"), det=g("details"),
-        gender=g("gender"), age=g("age"), hairC=g("hairColor"), hairS=g("hairStyle"),
-        eyes=g("eyes"), skin=g("skin"), face=g("face"), outfit=g("outfit"), acc=g("accessory");
+        gender=g("gender"), age=g("age"), hairC=g("hairColor"), hairS=g("hairStyle").concat(g("hairStyleM")),
+        eyes=g("eyes"), skin=g("skin"), face=g("face"), outfit=g("outfit"), acc=g("accessory"),
+        hairT=g("hairTech"), top=g("topWear"), bottom=g("bottomWear"), shoes=g("shoes");
+  action.push(...g("duoAction"));
+  mood.push(...g("duoMood"));
 
   subj.push(...gender);
-  const hasAppear = age.length||hairC.length||hairS.length||eyes.length||skin.length||face.length||outfit.length||acc.length;
+  const hasAppear = age.length||hairC.length||hairS.length||hairT.length||eyes.length||skin.length||face.length||outfit.length||acc.length||top.length||bottom.length||shoes.length;
   if(!subj.length && hasAppear) subj.push("a character");
 
   if(!subj.length && !style.length && !scene.length) return "";
@@ -465,17 +615,51 @@ function buildEN(){
   if(subj.length) s += " of " + joinList(subj," and ");
   if(age.length) s += " who appears " + joinList(age," and ");
   const withList = [];
-  if(hairC.length && hairS.length) withList.push(hairC.join(" and ") + " hair styled in " + joinList(hairS," and "));
-  else if(hairC.length) withList.push(hairC.join(" and ") + " hair");
+  let hairPhrase = "";
+  const tech = hairT[0] || "";
+  const c0 = hairC[0], cRest = hairC.slice(1);
+  const cRestJ = joinList(cRest," and ");
+  if(tech==="gradient dye"){
+    if(hairC.length>=2) hairPhrase = c0+" hair with a smooth gradient fading into "+cRestJ+" toward the tips";
+    else if(hairC.length===1) hairPhrase = c0+" gradient-dyed hair";
+    else hairPhrase = "beautifully gradient-dyed hair";
+  } else if(tech==="highlight streaks"){
+    if(hairC.length>=2) hairPhrase = c0+" hair with "+cRestJ+" highlights streaked through";
+    else if(hairC.length===1) hairPhrase = "hair with "+c0+" highlights streaked through";
+    else hairPhrase = "hair with subtle highlights";
+  } else if(tech==="hidden underlayer dye"){
+    if(hairC.length>=2) hairPhrase = c0+" hair with a hidden "+cRestJ+" underlayer";
+    else if(hairC.length===1) hairPhrase = "hair with a hidden "+c0+" underlayer";
+    else hairPhrase = "hair with a hidden dyed underlayer";
+  } else if(tech==="dip-dyed ends"){
+    if(hairC.length>=2) hairPhrase = c0+" hair with the ends dip-dyed in "+cRestJ;
+    else if(hairC.length===1) hairPhrase = "hair with "+c0+" dip-dyed ends";
+    else hairPhrase = "hair with dip-dyed ends";
+  } else if(hairC.length){
+    hairPhrase = joinList(hairC," and ")+" hair";
+    if(tech) hairPhrase += " with "+tech;
+  } else if(tech){
+    hairPhrase = "hair with "+tech;
+  }
+  if(hairPhrase && hairS.length) withList.push(hairPhrase+", styled in "+joinList(hairS," and "));
+  else if(hairPhrase) withList.push(hairPhrase);
   else if(hairS.length) withList.push(joinList(hairS," and "));
   if(eyes.length) withList.push(joinList(eyes," and "));
   if(skin.length) withList.push(joinList(skin," and "));
   if(face.length) withList.push(joinList(face," and "));
-  if(withList.length) s += ", with " + joinList(withList," and ");
-  if(outfit.length) s += ", wearing " + joinList(outfit," and ");
+  if(withList.length) s += ", with " + joinList(withList,", and ");
+  const wearList = outfit.slice();
+  if(top.length && bottom.length) wearList.push(joinList(top," and ") + " paired with " + joinList(bottom," and "));
+  else if(top.length) wearList.push(joinList(top," and "));
+  else if(bottom.length) wearList.push(joinList(bottom," and "));
+  if(shoes.length) wearList.push(joinList(shoes," and "));
+  if(wearList.length) s += ", wearing " + joinList(wearList,", and ");
   if(acc.length) s += ", accessorized with " + joinList(acc," and ");
   if(action.length) s += ", " + joinList(action," while ");
-  if(scene.length) s += ", set in " + joinList(scene," and ");
+  if(scene.length){
+    const sceneJ = joinList(scene," and ");
+    s += /^(under |in |inside |on |at |in front of )/i.test(sceneJ) ? ", set " + sceneJ : ", set in " + sceneJ;
+  }
   s += ".";
 
   const extra = [];
@@ -496,21 +680,53 @@ function buildZH(){
   const g = id => picked(id).map(i=>i.zh);
   const style=g("style"), action=g("action"), scene=g("scene"), light=g("lighting"),
         comp=g("composition"), cam=g("camera"), mood=g("mood"), det=g("details"),
-        gender=g("gender"), age=g("age"), hairC=g("hairColor"), hairS=g("hairStyle"),
-        eyes=g("eyes"), skin=g("skin"), face=g("face"), outfit=g("outfit"), acc=g("accessory");
+        gender=g("gender"), age=g("age"), hairC=g("hairColor"), hairS=g("hairStyle").concat(g("hairStyleM")),
+        eyes=g("eyes"), skin=g("skin"), face=g("face"), outfit=g("outfit"), acc=g("accessory"),
+        hairT=g("hairTech"), top=g("topWear"), bottom=g("bottomWear"), shoes=g("shoes");
+  action.push(...g("duoAction"));
+  mood.push(...g("duoMood"));
   subj.push(...gender);
-  const hasAppear = age.length||hairC.length||hairS.length||eyes.length||skin.length||face.length||outfit.length||acc.length;
+  const hasAppear = age.length||hairC.length||hairS.length||hairT.length||eyes.length||skin.length||face.length||outfit.length||acc.length||top.length||bottom.length||shoes.length;
   if(!subj.length && hasAppear) subj.push("一位角色");
   if(!subj.length && !style.length && !scene.length) return "";
   let s = style.length ? "一幅「" + style.join("×") + "」風格的作品" : "一幅作品";
   if(subj.length) s += "，描繪" + subj.join("與");
   if(age.length) s += "，看起來" + age.join("、");
-  if(hairC.length && hairS.length) s += "，留著" + hairC.join("與") + "的" + hairS.join("與");
-  else if(hairC.length) s += "，留著" + hairC.join("與") + "色頭髮";
+  const techZ = hairT[0] || "";
+  let hairZ = "";
+  const z0 = hairC[0], zRest = hairC.slice(1).join("與");
+  if(techZ.startsWith("漸層染")){
+    if(hairC.length>=2) hairZ = "由" + z0 + "漸變到" + zRest + "的漸層染髮";
+    else if(hairC.length===1) hairZ = z0 + "色系的漸層染髮";
+    else hairZ = "漸層染髮";
+  } else if(techZ.startsWith("挑染")){
+    if(hairC.length>=2) hairZ = z0 + "底髮加上" + zRest + "挑染";
+    else if(hairC.length===1) hairZ = "帶" + z0 + "挑染的頭髮";
+    else hairZ = "帶挑染的頭髮";
+  } else if(techZ.startsWith("內層染")){
+    if(hairC.length>=2) hairZ = z0 + "底髮、內層染成" + zRest;
+    else if(hairC.length===1) hairZ = "內層染成" + z0 + "的頭髮";
+    else hairZ = "有內層染的頭髮";
+  } else if(techZ.startsWith("髮尾染")){
+    if(hairC.length>=2) hairZ = z0 + "底髮、髮尾染成" + zRest;
+    else if(hairC.length===1) hairZ = "髮尾染成" + z0 + "的頭髮";
+    else hairZ = "有髮尾染的頭髮";
+  } else if(hairC.length){
+    hairZ = hairC.join("與") + "色頭髮";
+  } else if(techZ){
+    hairZ = techZ + "的頭髮";
+  }
+  if(hairZ && hairS.length) s += "，留著" + hairZ + "、梳成" + hairS.join("與");
+  else if(hairZ) s += "，留著" + hairZ;
   else if(hairS.length) s += "，留著" + hairS.join("與");
   const featList = [].concat(eyes, skin, face);
   if(featList.length) s += "，有著" + featList.join("、");
-  if(outfit.length) s += "，身穿" + outfit.join("與");
+  const wearZ = outfit.slice();
+  if(top.length && bottom.length) wearZ.push(top.join("與") + "搭配" + bottom.join("與"));
+  else if(top.length) wearZ.push(top.join("與"));
+  else if(bottom.length) wearZ.push(bottom.join("與"));
+  if(wearZ.length) s += "，身穿" + wearZ.join("、");
+  if(shoes.length) s += "，腳踩" + shoes.join("與");
   if(acc.length) s += "，配戴" + acc.join("、");
   if(action.length) s += "，正" + action.join("、");
   if(scene.length) s += "，場景位於" + scene.join("與");
@@ -785,19 +1001,29 @@ document.getElementById("clearHistory").onclick = ()=>{
 };
 document.getElementById("randomBtn").onclick = ()=>{
   const pickRand = arr => arr[Math.floor(Math.random()*arr.length)].en;
-  const isPerson = Math.random()<0.6;   // 六成機率抽「人物」組合，含外觀
+  const isSolo = Math.random()<0.5;   // 一半單人（性別+外觀）、一半雙人組合
   CATEGORIES.forEach(c=>{
     sel[c.id].clear();
     if(c.group==="appearance"){
-      if(!isPerson) return;                          // 非人物就不抽外觀
-      if(c.id!=="gender" && Math.random()<0.4) return; // 其餘外觀四成機率跳過
+      if(!isSolo && c.id!=="hairColor" && c.id!=="hairTech") return; // 雙人只抽整體髮色調性
+      if(c.id==="hairTech" && Math.random()<0.6) return;
+      if(c.id!=="gender" && c.id!=="hairTech" && Math.random()<0.4) return;
+      if(c.id==="hairStyleM" && sel["hairStyle"].size) return;          // 已抽到髮型就不重複
+      if((c.id==="topWear"||c.id==="bottomWear") && sel["outfit"].size) return; // 有整套就不混搭
       sel[c.id].add(pickRand(allItems(c)));
       return;
     }
-    if(c.id==="subject" && isPerson) return;         // 人物由性別分類擔任主體
-    if(c.id==="camera" && Math.random()<0.5) return; // camera 一半機率不選
+    if(c.id==="subject"){ if(isSolo) return; }        // 單人由性別分類擔任主體
+    if(c.id==="action" && !isSolo) return;            // 雙人不抽單人動作
+    if((c.id==="duoAction"||c.id==="duoMood") && isSolo) return; // 單人不抽雙人互動
+    if(c.id==="camera" && Math.random()<0.5) return;  // camera 一半機率不選
     sel[c.id].add(pickRand(allItems(c)));
   });
+  // 染髮技法被抽中時，補足第二個髮色才組得出來
+  if(sel["hairTech"].size && sel["hairColor"].size<2){
+    const colors = allItems(CATEGORIES.find(c=>c.id==="hairColor"));
+    while(sel["hairColor"].size<2) sel["hairColor"].add(pickRand(colors));
+  }
   renderCategories(); refresh();
   toast("🎲 隨機組合完成，不喜歡再按一次");
 };
