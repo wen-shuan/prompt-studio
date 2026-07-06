@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Prompt Studio — GPT 生圖提示詞工作室</title>
 <style>
   :root{
@@ -30,8 +30,8 @@
   /* ===== 手機版：預覽變成底部抽屜 ===== */
   .sheet-bar{display:none;}
   @media (max-width:980px){
-    .layout{grid-template-columns:1fr; padding-bottom:88px;}
-    .preview-wrap{position:fixed!important; bottom:0; left:0; right:0; z-index:50;}
+    .layout{grid-template-columns:1fr; padding-bottom:110px;}
+    .preview-wrap{position:fixed!important; top:auto!important; bottom:0; left:0; right:0; z-index:50;}
     .sheet-bar{
       display:flex; align-items:center; gap:10px;
       background:var(--panel); border:1px solid var(--accent); border-bottom:none;
@@ -43,7 +43,10 @@
       overflow:hidden; text-overflow:ellipsis;
     }
     .preview{display:none; border-radius:0; border-top:none;
-      max-height:62vh; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+      max-height:60vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+      padding-bottom:calc(18px + env(safe-area-inset-bottom));}
+    .sheet-bar{padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+    .preview-wrap.open .sheet-bar{padding-bottom:12px;}
     .preview-wrap.open .preview{display:block;}
     .chip{padding:8px 14px;}  /* 加大觸控面積 */
   }
