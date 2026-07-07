@@ -156,6 +156,15 @@
   }
   .section-divider span{font-size:12px; font-weight:400; color:var(--muted);}
 
+  .sheet-backdrop{display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:49;}
+  .sheet-backdrop.show{display:block;}
+  .sheet-bar .chev{font-size:12px; color:var(--accent); white-space:nowrap; font-weight:700;}
+  .char-ctrl{margin-left:auto; display:flex; gap:6px;}
+  .mini-btn{padding:5px 14px; border-radius:999px; background:var(--chip); border:1px solid var(--border); color:var(--muted); cursor:pointer; font-size:13px;}
+  .mini-btn.on{background:var(--chip-on); color:#fff; border-color:var(--accent);}
+  .char-tabs{display:flex; gap:8px; align-items:center; margin:0 0 12px;}
+  .char-note{font-size:12px; color:var(--accent2);}
+
   .toast{
     position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(80px);
     background:var(--accent); color:#fff; padding:10px 22px; border-radius:999px;
@@ -185,7 +194,7 @@
       <div class="card">
         <h3><span class="zh">✏️ 主體描述</span><span class="en">subject — 想畫什麼？可自由輸入</span></h3>
         <input type="text" id="subjectInput" placeholder="例：黑髮的那位比銀髮的高半個頭（中英文皆可）">
-        <div class="hint">單人畫面用下方「性別」分類當主體即可；雙人時兩人各自的差異（誰的髮色是哪種）可寫在這裡補充</div>
+        <div class="hint">單人：直接在下方人設外觀區選。雙人：把人設外觀切換成「雙人」，用角色 1／角色 2 頁籤分別設定。其他想補充的細節寫在這裡</div>
       </div>
       <div id="categories"></div>
       <div class="btn-row">
@@ -224,9 +233,10 @@
     </div>
   </div>
 
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
   <div class="preview-wrap" id="previewWrap">
     <div class="sheet-bar" id="sheetBar">
-      <span>🪄</span>
+      <span class="chev" id="sheetChev">▲ 展開</span>
       <span class="snippet" id="sheetSnippet">點選元素後這裡會顯示提示詞</span>
       <button class="btn small" id="sheetCopy">📋 複製</button>
     </div>
@@ -536,10 +546,12 @@ const TEMPLATES = [
     composition:["sweeping wide-angle panorama"],mood:["sleek and futuristic"],details:["raindrops and shimmering reflections"]}},
   { icon:"☔", name:"雨中共傘", desc:"一男一女 × 共傘 × 曖昧張力", subject:"",
     pick:{style:["anime-style illustration"],subject:["a man and a woman"],
+    gender:["a man"],hairColor:["jet-black"],hairStyleM:["tousled short hair"],
     duoAction:["sharing one umbrella","gazing into each other's eyes"],
     duoMood:["charged with unspoken romantic tension"],scene:["a rain-soaked street"],
     lighting:["pale moonlight"],composition:["medium shot"],
-    details:["raindrops and shimmering reflections"]}},
+    details:["raindrops and shimmering reflections"]},
+    pickB:{gender:["a woman"],hairColor:["ash-brown"],hairStyle:["long flowing hair"]}},
   { icon:"🎆", name:"祭典煙火二人", desc:"青梅竹馬 × 夏祭 × 心動瞬間", subject:"",
     pick:{style:["Ghibli-inspired hand-drawn animation style"],subject:["two childhood friends"],
     duoAction:["making a pinky promise"],duoMood:["capturing the exact moment of falling in love"],
@@ -565,9 +577,16 @@ const TEMPLATES = [
 
 /* ============ 狀態 ============ */
 const LS = { custom:"ps_custom", fav:"ps_fav", hist:"ps_hist" };
-let sel = {};            // {catId: Set(en)}
+const APPEAR = new Set(["gender","age","hairColor","hairTech","hairStyle","hairStyleM","eyes","skin","face","outfit","topWear","bottomWear","shoes","accessory"]);
+let sel = {}, selA = {}, selB = {};   // sel=畫面設定, selA/selB=角色外觀
+let charMode = "solo";                // solo | duo
+let activeChar = "A";
 let outLang = "en";
-CATEGORIES.forEach(c => sel[c.id] = new Set());
+CATEGORIES.forEach(c => {
+  if(APPEAR.has(c.id)){ selA[c.id]=new Set(); selB[c.id]=new Set(); }
+  else sel[c.id]=new Set();
+});
+function storeFor(catId){ return APPEAR.has(catId) ? (charMode==="duo" && activeChar==="B" ? selB : selA) : sel; }
 
 const load = k => { try{ return JSON.parse(localStorage.getItem(k)) || null; }catch(e){ return null; } };
 const save = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
@@ -586,35 +605,10 @@ function joinList(arr, conj){
   if(arr.length<=1) return arr.join("");
   return arr.slice(0,-1).join(", ") + conj + arr[arr.length-1];
 }
-function picked(catId){ return [...sel[catId]].map(en=>findItem(catId,en)).filter(Boolean); }
+function picked(catId){ const m = APPEAR.has(catId) ? selA : sel; return [...m[catId]].map(en=>findItem(catId,en)).filter(Boolean); }
+function pickedM(m,catId){ return [...(m[catId]||[])].map(en=>findItem(catId,en)).filter(Boolean); }
 
-function buildEN(){
-  const subjText = document.getElementById("subjectInput").value.trim();
-  const subj = picked("subject").map(i=>i.en);
-  if(subjText) subj.unshift(subjText);
-  const g = id => picked(id).map(i=>i.en);
-  const style=g("style"), action=g("action"), scene=g("scene"), light=g("lighting"),
-        comp=g("composition"), cam=g("camera"), mood=g("mood"), det=g("details"),
-        gender=g("gender"), age=g("age"), hairC=g("hairColor"), hairS=g("hairStyle").concat(g("hairStyleM")),
-        eyes=g("eyes"), skin=g("skin"), face=g("face"), outfit=g("outfit"), acc=g("accessory"),
-        hairT=g("hairTech"), top=g("topWear"), bottom=g("bottomWear"), shoes=g("shoes");
-  action.push(...g("duoAction"));
-  mood.push(...g("duoMood"));
-
-  subj.push(...gender);
-  const hasAppear = age.length||hairC.length||hairS.length||hairT.length||eyes.length||skin.length||face.length||outfit.length||acc.length||top.length||bottom.length||shoes.length;
-  if(!subj.length && hasAppear) subj.push("a character");
-
-  if(!subj.length && !style.length && !scene.length) return "";
-
-  let s = "";
-  const styleJoined = joinList(style," combined with ");
-  const article = /^[aeiou]/i.test(styleJoined) ? "An " : "A ";
-  const opener = style.length ? article + styleJoined : "An image";
-  s = opener;
-  if(subj.length) s += " of " + joinList(subj," and ");
-  if(age.length) s += " who appears " + joinList(age," and ");
-  const withList = [];
+function hairPhraseEN(hairC, hairT, hairS){
   let hairPhrase = "";
   const tech = hairT[0] || "";
   const c0 = hairC[0], cRest = hairC.slice(1);
@@ -641,28 +635,91 @@ function buildEN(){
   } else if(tech){
     hairPhrase = "hair with "+tech;
   }
-  if(hairPhrase && hairS.length) withList.push(hairPhrase+", styled in "+joinList(hairS," and "));
-  else if(hairPhrase) withList.push(hairPhrase);
-  else if(hairS.length) withList.push(joinList(hairS," and "));
+  if(hairPhrase && hairS.length) return hairPhrase+", styled in "+joinList(hairS," and ");
+  if(hairPhrase) return hairPhrase;
+  if(hairS.length) return joinList(hairS," and ");
+  return "";
+}
+
+function appearEN(m){
+  const p = id => pickedM(m,id).map(i=>i.en);
+  const gender=p("gender"), age=p("age"),
+        hairC=p("hairColor"), hairT=p("hairTech"),
+        hairS=p("hairStyle").concat(p("hairStyleM")),
+        eyes=p("eyes"), skin=p("skin"), face=p("face"),
+        outfit=p("outfit"), top=p("topWear"), bottom=p("bottomWear"),
+        shoes=p("shoes"), acc=p("accessory");
+  let tail = "";
+  if(age.length) tail += " who appears " + joinList(age," and ");
+  const withList = [];
+  const hp = hairPhraseEN(hairC, hairT, hairS);
+  if(hp) withList.push(hp);
   if(eyes.length) withList.push(joinList(eyes," and "));
   if(skin.length) withList.push(joinList(skin," and "));
   if(face.length) withList.push(joinList(face," and "));
-  if(withList.length) s += ", with " + joinList(withList,", and ");
+  if(withList.length) tail += ", with " + joinList(withList,", and ");
   const wearList = outfit.slice();
   if(top.length && bottom.length) wearList.push(joinList(top," and ") + " paired with " + joinList(bottom," and "));
   else if(top.length) wearList.push(joinList(top," and "));
   else if(bottom.length) wearList.push(joinList(bottom," and "));
   if(shoes.length) wearList.push(joinList(shoes," and "));
-  if(wearList.length) s += ", wearing " + joinList(wearList,", and ");
-  if(acc.length) s += ", accessorized with " + joinList(acc," and ");
+  if(wearList.length) tail += ", wearing " + joinList(wearList,", and ");
+  if(acc.length) tail += ", accessorized with " + joinList(acc," and ");
+  return { noun: gender.length ? joinList(gender," and ") : "", tail, any: !!(gender.length || tail) };
+}
+
+function charSentEN(label, d){
+  if(!d.any) return "";
+  if(d.noun) return label + " is " + d.noun + d.tail + ".";
+  let t = d.tail;
+  if(t.indexOf(" who appears")===0) t = " appears" + t.slice(12);
+  else if(t.indexOf(", with ")===0) t = " has " + t.slice(7);
+  else if(t.indexOf(", wearing ")===0) t = " is wearing " + t.slice(10);
+  else if(t.indexOf(", accessorized with ")===0) t = " is accessorized with " + t.slice(20);
+  return label + t + ".";
+}
+
+function buildEN(){
+  const subjText = document.getElementById("subjectInput").value.trim();
+  const g = id => picked(id).map(i=>i.en);
+  const style=g("style"), scene=g("scene"), light=g("lighting"),
+        comp=g("composition"), cam=g("camera"), det=g("details");
+  const action=g("action"); action.push(...g("duoAction"));
+  const mood=g("mood"); mood.push(...g("duoMood"));
+  const subj = [];
+  if(subjText) subj.push(subjText);
+  subj.push(...g("subject"));
+  const A = appearEN(selA), B = appearEN(selB);
+  let inlineTail = "";
+  if(charMode==="solo"){
+    if(A.noun) subj.push(A.noun);
+    if(!subj.length && A.any) subj.push("a character");
+    inlineTail = A.tail;
+  } else {
+    if(!subj.length && (A.any||B.any)){
+      if(A.noun || B.noun) subj.push((A.noun||"a character")+" and "+(B.noun||"another character"));
+      else subj.push("two characters");
+    }
+  }
+  if(!subj.length && !style.length && !scene.length) return "";
+  const styleJoined = joinList(style," combined with ");
+  const article = /^[aeiou]/i.test(styleJoined) ? "An " : "A ";
+  let s = style.length ? article + styleJoined : "An image";
+  if(subj.length) s += " of " + joinList(subj," and ");
+  s += inlineTail;
   if(action.length) s += ", " + joinList(action," while ");
   if(scene.length){
     const sceneJ = joinList(scene," and ");
     s += /^(under |in |inside |on |at |in front of )/i.test(sceneJ) ? ", set " + sceneJ : ", set in " + sceneJ;
   }
   s += ".";
-
   const extra = [];
+  if(charMode==="duo"){
+    const sa = charSentEN("The first character", A);
+    const sb = charSentEN("The second character", B);
+    if(sa) extra.push(sa);
+    if(sb) extra.push(sb);
+  }
   if(light.length) extra.push("The scene is illuminated by " + joinList(light," and ") + ".");
   const compParts = [];
   if(comp.length) compParts.push("framed as a " + joinList(comp," with "));
@@ -673,25 +730,7 @@ function buildEN(){
   return [s].concat(extra).join(" ");
 }
 
-function buildZH(){
-  const subjText = document.getElementById("subjectInput").value.trim();
-  const subj = picked("subject").map(i=>i.zh);
-  if(subjText) subj.unshift(subjText);
-  const g = id => picked(id).map(i=>i.zh);
-  const style=g("style"), action=g("action"), scene=g("scene"), light=g("lighting"),
-        comp=g("composition"), cam=g("camera"), mood=g("mood"), det=g("details"),
-        gender=g("gender"), age=g("age"), hairC=g("hairColor"), hairS=g("hairStyle").concat(g("hairStyleM")),
-        eyes=g("eyes"), skin=g("skin"), face=g("face"), outfit=g("outfit"), acc=g("accessory"),
-        hairT=g("hairTech"), top=g("topWear"), bottom=g("bottomWear"), shoes=g("shoes");
-  action.push(...g("duoAction"));
-  mood.push(...g("duoMood"));
-  subj.push(...gender);
-  const hasAppear = age.length||hairC.length||hairS.length||hairT.length||eyes.length||skin.length||face.length||outfit.length||acc.length||top.length||bottom.length||shoes.length;
-  if(!subj.length && hasAppear) subj.push("一位角色");
-  if(!subj.length && !style.length && !scene.length) return "";
-  let s = style.length ? "一幅「" + style.join("×") + "」風格的作品" : "一幅作品";
-  if(subj.length) s += "，描繪" + subj.join("與");
-  if(age.length) s += "，看起來" + age.join("、");
+function hairPhraseZH(hairC, hairT, hairS){
   const techZ = hairT[0] || "";
   let hairZ = "";
   const z0 = hairC[0], zRest = hairC.slice(1).join("與");
@@ -716,22 +755,67 @@ function buildZH(){
   } else if(techZ){
     hairZ = techZ + "的頭髮";
   }
-  if(hairZ && hairS.length) s += "，留著" + hairZ + "、梳成" + hairS.join("與");
-  else if(hairZ) s += "，留著" + hairZ;
-  else if(hairS.length) s += "，留著" + hairS.join("與");
+  if(hairZ && hairS.length) return "留著" + hairZ + "、梳成" + hairS.join("與");
+  if(hairZ) return "留著" + hairZ;
+  if(hairS.length) return "留著" + hairS.join("與");
+  return "";
+}
+
+function appearZH(m){
+  const p = id => pickedM(m,id).map(i=>i.zh);
+  const gender=p("gender"), age=p("age"), hairC=p("hairColor"), hairT=p("hairTech"),
+        hairS=p("hairStyle").concat(p("hairStyleM")), eyes=p("eyes"), skin=p("skin"), face=p("face"),
+        outfit=p("outfit"), top=p("topWear"), bottom=p("bottomWear"), shoes=p("shoes"), acc=p("accessory");
+  let tail = "";
+  if(age.length) tail += "，看起來" + age.join("、");
+  const hp = hairPhraseZH(hairC, hairT, hairS);
+  if(hp) tail += "，" + hp;
   const featList = [].concat(eyes, skin, face);
-  if(featList.length) s += "，有著" + featList.join("、");
+  if(featList.length) tail += "，有著" + featList.join("、");
   const wearZ = outfit.slice();
   if(top.length && bottom.length) wearZ.push(top.join("與") + "搭配" + bottom.join("與"));
   else if(top.length) wearZ.push(top.join("與"));
   else if(bottom.length) wearZ.push(bottom.join("與"));
-  if(wearZ.length) s += "，身穿" + wearZ.join("、");
-  if(shoes.length) s += "，腳踩" + shoes.join("與");
-  if(acc.length) s += "，配戴" + acc.join("、");
+  if(wearZ.length) tail += "，身穿" + wearZ.join("、");
+  if(shoes.length) tail += "，腳踩" + shoes.join("與");
+  if(acc.length) tail += "，配戴" + acc.join("、");
+  return { noun: gender.join("與"), tail, any: !!(gender.length || tail) };
+}
+
+function buildZH(){
+  const subjText = document.getElementById("subjectInput").value.trim();
+  const g = id => picked(id).map(i=>i.zh);
+  const style=g("style"), scene=g("scene"), light=g("lighting"),
+        comp=g("composition"), cam=g("camera"), det=g("details");
+  const action=g("action"); action.push(...g("duoAction"));
+  const mood=g("mood"); mood.push(...g("duoMood"));
+  const subj = [];
+  if(subjText) subj.push(subjText);
+  subj.push(...g("subject"));
+  const A = appearZH(selA), B = appearZH(selB);
+  let inlineTail = "";
+  if(charMode==="solo"){
+    if(A.noun) subj.push(A.noun);
+    if(!subj.length && A.any) subj.push("一位角色");
+    inlineTail = A.tail;
+  } else {
+    if(!subj.length && (A.any||B.any)){
+      if(A.noun||B.noun) subj.push((A.noun||"一位角色")+"與"+(B.noun||"另一位角色"));
+      else subj.push("兩位角色");
+    }
+  }
+  if(!subj.length && !style.length && !scene.length) return "";
+  let s = style.length ? "一幅「" + style.join("×") + "」風格的作品" : "一幅作品";
+  if(subj.length) s += "，描繪" + subj.join("與");
+  s += inlineTail;
   if(action.length) s += "，正" + action.join("、");
   if(scene.length) s += "，場景位於" + scene.join("與");
   s += "。";
   const extra = [];
+  if(charMode==="duo"){
+    if(A.any) extra.push("第一位角色" + (A.noun ? "是" + A.noun : "") + A.tail + "。");
+    if(B.any) extra.push("第二位角色" + (B.noun ? "是" + B.noun : "") + B.tail + "。");
+  }
   if(light.length) extra.push("畫面以" + light.join("與") + "照亮。");
   const cp = [];
   if(comp.length) cp.push("採" + comp.join("加上"));
@@ -753,8 +837,25 @@ function renderCategories(){
       appearHeaderDone = true;
       const hd = document.createElement("div");
       hd.className = "section-divider";
-      hd.innerHTML = '🧍 人設外觀 <span>character appearance — 描述角色長相與穿搭</span>';
+      hd.innerHTML = '🧍 人設外觀 <span>單人直接選；雙人請切「雙人」分別設定</span>';
+      const mkBtn = (txt,on,fn)=>{ const b=document.createElement("button"); b.className="mini-btn"+(on?" on":""); b.textContent=txt; b.onclick=fn; return b; };
+      const ctrl = document.createElement("div");
+      ctrl.className = "char-ctrl";
+      ctrl.appendChild(mkBtn("單人", charMode==="solo", ()=>{ charMode="solo"; activeChar="A"; renderCategories(); refresh(); }));
+      ctrl.appendChild(mkBtn("雙人", charMode==="duo", ()=>{ charMode="duo"; renderCategories(); refresh(); }));
+      hd.appendChild(ctrl);
       wrap.appendChild(hd);
+      if(charMode==="duo"){
+        const tabs = document.createElement("div");
+        tabs.className = "char-tabs";
+        tabs.appendChild(mkBtn("👤 角色 1", activeChar==="A", ()=>{ activeChar="A"; renderCategories(); refresh(); }));
+        tabs.appendChild(mkBtn("👤 角色 2", activeChar==="B", ()=>{ activeChar="B"; renderCategories(); refresh(); }));
+        const note = document.createElement("span");
+        note.className = "char-note";
+        note.textContent = "正在編輯角色 " + (activeChar==="A"?"1":"2") + " 的外觀";
+        tabs.appendChild(note);
+        wrap.appendChild(tabs);
+      }
     }
     if(cat.group!=="appearance" && appearHeaderDone && !appearEnded){
       appearEnded = true;
@@ -765,11 +866,12 @@ function renderCategories(){
     }
     const card = document.createElement("div");
     card.className = "card";
+    const store = storeFor(cat.id);
     const h = document.createElement("h3");
     h.innerHTML = '<span class="zh">'+cat.zh+'</span><span class="en">'+cat.en+'</span>';
     const clr = document.createElement("button");
     clr.className = "clear-cat"; clr.textContent = "清除";
-    clr.onclick = ()=>{ sel[cat.id].clear(); renderCategories(); refresh(); };
+    clr.onclick = ()=>{ storeFor(cat.id).clear(); renderCategories(); refresh(); };
     h.appendChild(clr);
     card.appendChild(h);
     const chips = document.createElement("div");
@@ -777,10 +879,10 @@ function renderCategories(){
     allItems(cat).forEach(it=>{
       const c = document.createElement("div");
       const isCustom = !(cat.items.some(x=>x.en===it.en));
-      c.className = "chip" + (sel[cat.id].has(it.en) ? " on":"") + (isCustom?" custom":"");
+      c.className = "chip" + (store.has(it.en) ? " on":"") + (isCustom?" custom":"");
       c.innerHTML = it.zh + '<span class="en">' + it.en + '</span>';
       c.onclick = ()=>{
-        sel[cat.id].has(it.en) ? sel[cat.id].delete(it.en) : sel[cat.id].add(it.en);
+        store.has(it.en) ? store.delete(it.en) : store.add(it.en);
         c.classList.toggle("on");
         refresh();
       };
@@ -795,7 +897,10 @@ function refresh(){
   const en = buildEN(), zh = buildZH();
   document.querySelector("#outEn .txt").textContent = en || "（尚未選擇任何元素——點選左側分類，或輸入主體描述）";
   document.querySelector("#outZh .txt").textContent = zh || "（尚未選擇任何元素）";
-  const n = CATEGORIES.reduce((a,c)=>a+sel[c.id].size,0);
+  const n = CATEGORIES.reduce((a,c)=>{
+    if(APPEAR.has(c.id)) return a + selA[c.id].size + (charMode==="duo" ? selB[c.id].size : 0);
+    return a + sel[c.id].size;
+  },0);
   document.getElementById("selCount").textContent = "已選 " + n + " 個元素";
   document.getElementById("sheetSnippet").textContent =
     en ? en : "點選元素後這裡會顯示提示詞";
@@ -832,12 +937,21 @@ function currentOutput(){
   return en;
 }
 function snapshotSel(){
-  const o = {};
-  CATEGORIES.forEach(c=>o[c.id]=[...sel[c.id]]);
-  return { sel:o, subject:document.getElementById("subjectInput").value };
+  const o = {}, a = {}, b = {};
+  CATEGORIES.forEach(c=>{
+    if(APPEAR.has(c.id)){ a[c.id]=[...selA[c.id]]; b[c.id]=[...selB[c.id]]; }
+    else o[c.id]=[...sel[c.id]];
+  });
+  return { sel:o, selA:a, selB:b, mode:charMode, subject:document.getElementById("subjectInput").value };
 }
 function applySnapshot(snap){
-  CATEGORIES.forEach(c=>{ sel[c.id] = new Set(snap.sel[c.id]||[]); });
+  CATEGORIES.forEach(c=>{
+    if(APPEAR.has(c.id)){
+      selA[c.id] = new Set((snap.selA && snap.selA[c.id]) || (snap.sel && snap.sel[c.id]) || []);
+      selB[c.id] = new Set((snap.selB && snap.selB[c.id]) || []);
+    } else sel[c.id] = new Set((snap.sel && snap.sel[c.id]) || []);
+  });
+  charMode = snap.mode || "solo"; activeChar = "A";
   document.getElementById("subjectInput").value = snap.subject || "";
   renderCategories(); refresh();
 }
@@ -898,7 +1012,13 @@ function renderTemplates(){
     d.className = "tpl";
     d.innerHTML = '<div class="icon">'+t.icon+'</div><h4>'+t.name+'</h4><p>'+t.desc+'</p>';
     d.onclick = ()=>{
-      CATEGORIES.forEach(c=>sel[c.id]=new Set(t.pick[c.id]||[]));
+      CATEGORIES.forEach(c=>{
+        if(APPEAR.has(c.id)){
+          selA[c.id] = new Set(t.pick[c.id]||[]);
+          selB[c.id] = new Set((t.pickB && t.pickB[c.id])||[]);
+        } else sel[c.id] = new Set(t.pick[c.id]||[]);
+      });
+      charMode = t.pickB ? "duo" : "solo"; activeChar = "A";
       document.getElementById("subjectInput").value = t.subject || "";
       renderCategories(); refresh(); switchPage("builder");
       toast("已套用模板：" + t.name);
@@ -927,7 +1047,8 @@ function renderVocab(){
       c.title = "點擊刪除";
       c.onclick = ()=>{
         customTerms[cat.id].splice(idx,1);
-        sel[cat.id].delete(it.en);
+        if(APPEAR.has(cat.id)){ selA[cat.id].delete(it.en); selB[cat.id].delete(it.en); }
+        else sel[cat.id].delete(it.en);
         save(LS.custom, customTerms);
         renderVocab(); renderCategories(); refresh();
       };
@@ -991,7 +1112,7 @@ document.getElementById("saveFavBtn").onclick = ()=>{
   toast("已存入收藏 ⭐");
 };
 document.getElementById("clearAll").onclick = ()=>{
-  CATEGORIES.forEach(c=>sel[c.id].clear());
+  CATEGORIES.forEach(c=>{ if(APPEAR.has(c.id)){ selA[c.id].clear(); selB[c.id].clear(); } else sel[c.id].clear(); });
   document.getElementById("subjectInput").value = "";
   renderCategories(); refresh();
 };
@@ -1001,42 +1122,53 @@ document.getElementById("clearHistory").onclick = ()=>{
 };
 document.getElementById("randomBtn").onclick = ()=>{
   const pickRand = arr => arr[Math.floor(Math.random()*arr.length)].en;
-  const isSolo = Math.random()<0.5;   // 一半單人（性別+外觀）、一半雙人組合
+  const isSolo = Math.random()<0.5;
+  charMode = isSolo ? "solo" : "duo"; activeChar = "A";
   CATEGORIES.forEach(c=>{
+    if(APPEAR.has(c.id)){ selA[c.id].clear(); selB[c.id].clear(); return; }
     sel[c.id].clear();
-    if(c.group==="appearance"){
-      if(!isSolo && c.id!=="hairColor" && c.id!=="hairTech") return; // 雙人只抽整體髮色調性
-      if(c.id==="hairTech" && Math.random()<0.6) return;
-      if(c.id!=="gender" && c.id!=="hairTech" && Math.random()<0.4) return;
-      if(c.id==="hairStyleM" && sel["hairStyle"].size) return;          // 已抽到髮型就不重複
-      if((c.id==="topWear"||c.id==="bottomWear") && sel["outfit"].size) return; // 有整套就不混搭
-      sel[c.id].add(pickRand(allItems(c)));
-      return;
-    }
-    if(c.id==="subject"){ if(isSolo) return; }        // 單人由性別分類擔任主體
-    if(c.id==="action" && !isSolo) return;            // 雙人不抽單人動作
-    if((c.id==="duoAction"||c.id==="duoMood") && isSolo) return; // 單人不抽雙人互動
-    if(c.id==="camera" && Math.random()<0.5) return;  // camera 一半機率不選
+    if(c.id==="subject" && isSolo) return;
+    if(c.id==="action" && !isSolo) return;
+    if((c.id==="duoAction"||c.id==="duoMood") && isSolo) return;
+    if(c.id==="camera" && Math.random()<0.5) return;
     sel[c.id].add(pickRand(allItems(c)));
   });
-  // 染髮技法被抽中時，補足第二個髮色才組得出來
-  if(sel["hairTech"].size && sel["hairColor"].size<2){
-    const colors = allItems(CATEGORIES.find(c=>c.id==="hairColor"));
-    while(sel["hairColor"].size<2) sel["hairColor"].add(pickRand(colors));
-  }
+  const fillAppear = (m)=>{
+    CATEGORIES.forEach(c=>{
+      if(!APPEAR.has(c.id)) return;
+      if(c.id==="hairTech" && Math.random()<0.6) return;
+      if(c.id!=="gender" && c.id!=="hairTech" && Math.random()<0.4) return;
+      if(c.id==="hairStyleM" && m["hairStyle"].size) return;
+      if((c.id==="topWear"||c.id==="bottomWear") && m["outfit"].size) return;
+      m[c.id].add(pickRand(allItems(c)));
+    });
+    if(m["hairTech"].size && m["hairColor"].size<2){
+      const colors = allItems(CATEGORIES.find(c=>c.id==="hairColor"));
+      let guard = 0;
+      while(m["hairColor"].size<2 && guard++<20) m["hairColor"].add(pickRand(colors));
+    }
+  };
+  fillAppear(selA);
+  if(!isSolo) fillAppear(selB);
   renderCategories(); refresh();
   toast("🎲 隨機組合完成，不喜歡再按一次");
 };
 
 /* ============ 手機底部抽屜 ============ */
-document.getElementById("sheetBar").onclick = (e)=>{
-  if(e.target.id==="sheetCopy") return;
-  document.getElementById("previewWrap").classList.toggle("open");
-};
-document.getElementById("sheetCopy").onclick = (e)=>{
+function setSheet(open){
+  document.getElementById("previewWrap").classList.toggle("open", open);
+  document.getElementById("sheetBackdrop").classList.toggle("show", open);
+  document.getElementById("sheetChev").textContent = open ? "▼ 收合" : "▲ 展開";
+}
+document.getElementById("sheetBar").addEventListener("click",(e)=>{
+  if(e.target.closest("#sheetCopy")) return;
+  setSheet(!document.getElementById("previewWrap").classList.contains("open"));
+});
+document.getElementById("sheetBackdrop").addEventListener("click",()=>setSheet(false));
+document.getElementById("sheetCopy").addEventListener("click",(e)=>{
   e.stopPropagation();
   document.getElementById("copyBtn").click();
-};
+});
 
 /* ============ 啟動 ============ */
 renderCategories();
