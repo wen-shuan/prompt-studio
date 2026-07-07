@@ -586,7 +586,7 @@ CATEGORIES.forEach(c => {
   if(APPEAR.has(c.id)){ selA[c.id]=new Set(); selB[c.id]=new Set(); }
   else sel[c.id]=new Set();
 });
-function storeFor(catId){ return APPEAR.has(catId) ? (charMode==="duo" && activeChar==="B" ? selB : selA) : sel; }
+function storeFor(catId){ const m = APPEAR.has(catId) ? (charMode==="duo" && activeChar==="B" ? selB : selA) : sel; return m[catId]; }
 
 const load = k => { try{ return JSON.parse(localStorage.getItem(k)) || null; }catch(e){ return null; } };
 const save = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
