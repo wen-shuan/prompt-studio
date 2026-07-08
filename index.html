@@ -348,6 +348,14 @@ const CATEGORIES = [
     {zh:"星空感眼眸",en:"sparkling galaxy-like eyes"},
     {zh:"溫柔垂眼",en:"gentle downturned eyes"},{zh:"銳利上挑眼",en:"sharp upturned eyes"}
   ]},
+  { id:"gaze", zh:"👀 視線方向", en:"gaze — 看向哪裡（雙人可分別設定）", group:"appearance", items:[
+    {zh:"直視鏡頭",en:"looking directly at the viewer"},{zh:"望向遠方",en:"gazing into the distance"},
+    {zh:"垂眸低視",en:"casting their gaze downward"},{zh:"抬眼仰望",en:"looking upward"},
+    {zh:"側目斜睨",en:"glancing to the side"},{zh:"回眸凝望",en:"looking back over the shoulder"},
+    {zh:"望向身旁的人",en:"looking toward the person beside them"},{zh:"望向對方",en:"looking at the other person"},
+    {zh:"輕闔雙眼",en:"keeping their eyes gently closed"},{zh:"半垂眼簾",en:"gazing through half-lowered eyelids"},
+    {zh:"凝視畫面外",en:"staring at something beyond the frame"}
+  ]},
   { id:"skin", zh:"🫧 膚色", en:"skin tone", group:"appearance", items:[
     {zh:"白皙瓷肌",en:"fair porcelain skin"},{zh:"冷白皮",en:"cool pale skin"},
     {zh:"自然健康膚色",en:"a natural healthy complexion"},{zh:"蜜色小麥肌",en:"sun-kissed tan skin"},
@@ -584,7 +592,7 @@ const TEMPLATES = [
 
 /* ============ 狀態 ============ */
 const LS = { custom:"ps_custom", fav:"ps_fav", hist:"ps_hist" };
-const APPEAR = new Set(["gender","age","hairColor","hairTech","hairStyle","hairStyleM","eyes","skin","face","outfit","topWear","bottomWear","shoes","accessory"]);
+const APPEAR = new Set(["gender","age","hairColor","hairTech","hairStyle","hairStyleM","eyes","gaze","skin","face","outfit","topWear","bottomWear","shoes","accessory"]);
 let sel = {}, selA = {}, selB = {};   // sel=畫面設定, selA/selB=角色外觀
 let charMode = "solo";                // solo | duo
 let activeChar = "A";
@@ -656,7 +664,7 @@ function appearEN(m){
         hairS=p("hairStyle").concat(p("hairStyleM")),
         eyes=p("eyes"), skin=p("skin"), face=p("face"),
         outfit=p("outfit"), top=p("topWear"), bottom=p("bottomWear"),
-        shoes=p("shoes"), acc=p("accessory");
+        shoes=p("shoes"), acc=p("accessory"), gaze=p("gaze");
   let tail = "";
   if(age.length) tail += " who appears " + joinList(age," and ");
   const withList = [];
@@ -673,6 +681,7 @@ function appearEN(m){
   if(shoes.length) wearList.push(joinList(shoes," and "));
   if(wearList.length) tail += ", wearing " + joinList(wearList,", and ");
   if(acc.length) tail += ", accessorized with " + joinList(acc," and ");
+  if(gaze.length) tail += ", " + joinList(gaze," and ");
   return { noun: gender.length ? joinList(gender," and ") : "", tail, any: !!(gender.length || tail) };
 }
 
@@ -684,6 +693,7 @@ function charSentEN(label, d){
   else if(t.indexOf(", with ")===0) t = " has " + t.slice(7);
   else if(t.indexOf(", wearing ")===0) t = " is wearing " + t.slice(10);
   else if(t.indexOf(", accessorized with ")===0) t = " is accessorized with " + t.slice(20);
+  else if(t.indexOf(", ")===0) t = " is " + t.slice(2);
   return label + t + ".";
 }
 
@@ -773,7 +783,7 @@ function appearZH(m){
   const p = id => pickedM(m,id).map(i=>i.zh);
   const gender=p("gender"), age=p("age"), hairC=p("hairColor"), hairT=p("hairTech"),
         hairS=p("hairStyle").concat(p("hairStyleM")), eyes=p("eyes"), skin=p("skin"), face=p("face"),
-        outfit=p("outfit"), top=p("topWear"), bottom=p("bottomWear"), shoes=p("shoes"), acc=p("accessory");
+        outfit=p("outfit"), top=p("topWear"), bottom=p("bottomWear"), shoes=p("shoes"), acc=p("accessory"), gaze=p("gaze");
   let tail = "";
   if(age.length) tail += "，看起來" + age.join("、");
   const hp = hairPhraseZH(hairC, hairT, hairS);
@@ -787,6 +797,7 @@ function appearZH(m){
   if(wearZ.length) tail += "，身穿" + wearZ.join("、");
   if(shoes.length) tail += "，腳踩" + shoes.join("與");
   if(acc.length) tail += "，配戴" + acc.join("、");
+  if(gaze.length) tail += "，" + gaze.join("、");
   return { noun: gender.join("與"), tail, any: !!(gender.length || tail) };
 }
 
