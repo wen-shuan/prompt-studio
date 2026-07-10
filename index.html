@@ -162,6 +162,31 @@
   }
   .section-divider span{font-size:12px; font-weight:400; color:var(--muted);}
 
+  /* 詞庫管理刪除鍵 */
+  .chip .del-x{ margin-left:8px; color:var(--muted); cursor:pointer; font-weight:700; padding:0 5px; border-radius:6px; }
+  .chip .del-x:hover{ color:var(--danger); background:rgba(248,113,113,.14); }
+
+  /* 拆解匯入 */
+  .instr-box{
+    background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+    padding:12px; font-size:12.5px; line-height:1.65; white-space:pre-wrap; word-break:break-word;
+    max-height:300px; overflow:auto; color:var(--muted); margin-bottom:10px;
+  }
+  #decodeInput{ min-height:150px; resize:vertical; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; line-height:1.5; }
+  .imp-sec-title{ font-size:14px; font-weight:700; margin:18px 0 6px; color:var(--accent2); }
+  .imp-sec-title.newt{ color:var(--accent); }
+  .imp-grp{ font-size:12px; color:var(--muted); margin:12px 0 5px; }
+  .imp-term{ display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:8px;
+    background:var(--panel2); border:1px solid var(--border); margin-bottom:6px; cursor:pointer; font-size:13px; }
+  .imp-term.newt{ border-style:dashed; border-color:var(--accent); }
+  .imp-term input{ accent-color:var(--accent); flex:0 0 auto; }
+  .imp-term .en{ color:var(--muted); font-size:11px; }
+  .imp-term .cat{ margin-left:auto; font-size:11px; color:var(--muted); white-space:nowrap; }
+  .imp-badge{ font-size:10px; background:var(--accent); color:#fff; border-radius:6px; padding:1px 6px; }
+  .imp-actions{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:16px; padding-top:12px; border-top:1px dashed var(--border); }
+  .imp-persist{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); cursor:pointer; }
+  .imp-persist input{ accent-color:var(--accent); }
+
   .sheet-backdrop{display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:49;}
   .sheet-backdrop.show{display:block;}
   .sheet-bar .chev{font-size:12px; color:var(--accent); white-space:nowrap; font-weight:700;}
@@ -194,6 +219,7 @@
       <button class="tab" data-page="favorites">⭐ 收藏</button>
       <button class="tab" data-page="history">🕘 歷史</button>
       <button class="tab" data-page="vocab">🔧 詞庫管理</button>
+      <button class="tab" data-page="decode">🔍 拆解匯入</button>
     </div>
 
     <div class="page on" id="page-builder">
@@ -235,6 +261,26 @@
       <div class="card">
         <h3><span class="zh">自訂詞庫</span><span class="en">新增的詞條會出現在組合器中（虛線框），存在瀏覽器裡</span></h3>
         <div id="vocabMgr"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-decode">
+      <div class="card">
+        <h3><span class="zh">🔍 步驟一・產生指令</span><span class="en">複製這段，連同要拆解的圖一起丟給 ChatGPT</span></h3>
+        <div class="instr-box" id="decodeInstr"></div>
+        <div class="btn-row">
+          <button class="btn" id="copyInstrBtn">📋 複製指令</button>
+        </div>
+        <div class="hint">用你自己的 ChatGPT（手動貼，不接 API）：把整段指令貼上去，附上想拆解的圖片送出，它會回一包 JSON。</div>
+      </div>
+      <div class="card">
+        <h3><span class="zh">📥 步驟二・貼回 JSON 匯入</span><span class="en">把 ChatGPT 回的 JSON 貼進來解析</span></h3>
+        <textarea id="decodeInput" placeholder='把 ChatGPT 回傳的 JSON 整段貼在這裡，再按「解析」。就算前後多了說明文字或 ``` 也沒關係，我會自己抓出 JSON。'></textarea>
+        <div class="btn-row">
+          <button class="btn" id="parseDecodeBtn">🔎 解析</button>
+          <button class="btn ghost" id="clearDecodeBtn">清空</button>
+        </div>
+        <div id="decodeResult"></div>
       </div>
     </div>
   </div>
@@ -586,6 +632,7 @@ let charMode = "solo";                // solo | duo
 let activeChar = "A";
 let outLang = "en";
 let editMode = false;
+let decodeAnalysis = null;            // 拆解匯入解析結果
 CATEGORIES.forEach(c => {
   if(APPEAR.has(c.id)){ selA[c.id]=new Set(); selB[c.id]=new Set(); }
   else sel[c.id]=new Set();
@@ -1059,15 +1106,20 @@ function renderVocab(){
     (customTerms[cat.id]||[]).forEach((it,idx)=>{
       const c = document.createElement("div");
       c.className = "chip custom";
-      c.innerHTML = it.zh + '<span class="en">' + escapeHtml(it.en) + '</span> ✕';
-      c.title = "點擊刪除";
-      c.onclick = ()=>{
+      c.innerHTML = it.zh + '<span class="en">' + escapeHtml(it.en) + '</span>';
+      const x = document.createElement("span");
+      x.className = "del-x";
+      x.textContent = "✕";
+      x.title = "刪除這個詞條";
+      x.onclick = (e)=>{
+        e.stopPropagation();
         customTerms[cat.id].splice(idx,1);
         if(APPEAR.has(cat.id)){ selA[cat.id].delete(it.en); selB[cat.id].delete(it.en); }
         else sel[cat.id].delete(it.en);
         save(LS.custom, customTerms);
         renderVocab(); renderCategories(); refresh();
       };
+      c.appendChild(x);
       list.appendChild(c);
     });
     if(!(customTerms[cat.id]||[]).length){
@@ -1098,6 +1150,225 @@ function renderVocab(){
   });
 }
 
+/* ============ 拆解匯入（逆向工程） ============ */
+// 依 APPEAR 判斷外觀類；subject 與其餘為共用
+const SHARED_ORDER = ["subject","action","duoAction","duoMood","scene","style","lighting","composition","camera","mood","details"];
+const APPEAR_ORDER = ["gender","age","hairColor","hairTech","hairStyle","hairStyleM","eyes","gaze","skin","face","outfit","topWear","bottomWear","shoes","accessory"];
+// ChatGPT 可能亂用的 key → 對回我們的類別
+const KEY_ALIAS = {
+  hair:"hairColor", haircolor:"hairColor", hair_color:"hairColor", hairstyle:"hairStyle", hair_style:"hairStyle",
+  clothing:"outfit", clothes:"outfit", outfits:"outfit", attire:"outfit", dress:"outfit",
+  top:"topWear", tops:"topWear", upper:"topWear", bottom:"bottomWear", bottoms:"bottomWear", pants:"bottomWear",
+  shoe:"shoes", footwear:"shoes", accessories:"accessory", accessory_items:"accessory",
+  eye:"eyes", eyecolor:"eyes", skintone:"skin", skin_tone:"skin", complexion:"skin",
+  facial:"face", facial_features:"face", light:"lighting", lights:"lighting", illumination:"lighting",
+  background:"scene", setting:"scene", environment:"scene", pose:"action", posture:"action",
+  expression:"mood", atmosphere:"mood", tone:"mood", artstyle:"style", art_style:"style", medium:"style",
+  view:"composition", angle:"composition", framing:"composition", lens:"camera", detail:"details", texture:"details",
+  gaze_direction:"gaze", looking:"gaze"
+};
+
+function buildDecodeInstruction(){
+  const gloss = id => { const c = CATEGORIES.find(x=>x.id===id); return c ? c.zh : id; };
+  const ex = id => { const c = CATEGORIES.find(x=>x.id===id); if(!c||!c.items.length) return ""; return c.items.slice(0,3).map(i=>i.en).join(", "); };
+  const line = id => "  " + id + "（" + gloss(id) + (ex(id)? "，例：" + ex(id) : "") + "）";
+  const sharedLines = SHARED_ORDER.filter(id=>CATEGORIES.some(c=>c.id===id)).map(line).join("\n");
+  const appearLines = APPEAR_ORDER.filter(id=>CATEGORIES.some(c=>c.id===id)).map(line).join("\n");
+  return [
+"你是圖像 prompt 逆向工程助手。請仔細分析我附上的這張圖片，把畫面中的視覺元素拆解出來，用「繁體中文＋英文」對照，並嚴格依照下面的 JSON 結構輸出。",
+"",
+"規則：",
+"1. 只輸出 JSON 本身，不要有任何說明文字或前言，也不要用 ``` 或 markdown 把它包起來。",
+"2. 每個元素寫成物件 {\"zh\":\"繁體中文\",\"en\":\"lowercase english phrase\"}；英文一律小寫、簡短片語，用字請盡量貼近下面每一類的範例風格。",
+"3. 畫面裡沒有、或你沒把握的類別，直接省略那個 key，不要硬填、不要編造。",
+"4. 先判斷畫面主要人物有幾位：只有一位 → \"mode\":\"solo\"，外觀放進 character1；有兩位 → \"mode\":\"duo\"，兩個人的外觀分別放進 character1 與 character2。",
+"5. 動作、場景、風格、光線、鏡頭、氛圍這些是整張圖共用的，放在 shared。",
+"",
+"JSON 結構（每個值都是陣列，可放多個元素）：",
+"{",
+"  \"mode\": \"solo 或 duo\",",
+"  \"shared\": { …共用類別… },",
+"  \"character1\": { …第一個人的外觀… },",
+"  \"character2\": { …第二個人的外觀，單人時省略… }",
+"}",
+"",
+"shared 可用的類別：",
+sharedLines,
+"",
+"character1 / character2 可用的外觀類別：",
+appearLines,
+"",
+"範例輸出（格式參考，實際請依圖片內容）：",
+"{\"mode\":\"duo\",\"shared\":{\"style\":[{\"zh\":\"日系動漫風\",\"en\":\"anime-style illustration\"}],\"scene\":[{\"zh\":\"雨後的街道\",\"en\":\"a rain-soaked street\"}],\"duoAction\":[{\"zh\":\"共撐一把傘\",\"en\":\"sharing one umbrella\"}]},\"character1\":{\"gender\":[{\"zh\":\"一位男性\",\"en\":\"a man\"}],\"hairColor\":[{\"zh\":\"烏黑\",\"en\":\"jet-black\"}]},\"character2\":{\"gender\":[{\"zh\":\"一位女性\",\"en\":\"a woman\"}],\"hairColor\":[{\"zh\":\"亞麻棕\",\"en\":\"ash-brown\"}]}}"
+  ].join("\n");
+}
+
+function parseDecodeJSON(raw){
+  const a = raw.indexOf("{"), b = raw.lastIndexOf("}");
+  if(a<0 || b<=a) throw new Error("找不到 JSON 物件（要有 { … }）");
+  return JSON.parse(raw.slice(a, b+1));
+}
+
+// 全庫英文索引：enLower → 真正所屬的 catId
+function vocabEnIndex(){
+  const map = new Map();
+  CATEGORIES.forEach(cat=>{
+    allItems(cat).forEach(it=>{
+      const k = String(it.en).trim().toLowerCase();
+      if(k && !map.has(k)) map.set(k, cat.id);
+    });
+  });
+  return map;
+}
+function resolveCatKey(rawKey){
+  if(CATEGORIES.some(c=>c.id===rawKey)) return rawKey;
+  const low = String(rawKey).toLowerCase();
+  if(KEY_ALIAS[low]) return KEY_ALIAS[low];
+  return null;
+}
+
+function analyzeDecode(data){
+  const idx = vocabEnIndex();
+  const terms = [];
+  const pushGroup = (group, obj)=>{
+    if(!obj || typeof obj!=="object") return;
+    Object.keys(obj).forEach(rawKey=>{
+      const arr = obj[rawKey];
+      if(!Array.isArray(arr)) return;
+      arr.forEach(term=>{
+        if(!term || typeof term!=="object") return;
+        const en = String(term.en||"").trim();
+        if(!en) return;
+        const zh = String(term.zh||"").trim() || en;
+        const enL = en.toLowerCase();
+        let catId, isNew;
+        if(idx.has(enL)){ catId = idx.get(enL); isNew = false; }      // 既有：歸回真正類別
+        else { catId = resolveCatKey(rawKey) || "details"; isNew = true; } // 新詞：用它給的類別（對不上就丟 details）
+        // 去掉這批裡的重複（同 group 同 catId 同 en）
+        if(terms.some(t=>t.group===group && t.catId===catId && t.en.toLowerCase()===enL)) return;
+        terms.push({ group, catId, zh, en, isNew });
+      });
+    });
+  };
+  const hasNested = data.shared || data.character1 || data.character2;
+  if(hasNested){
+    pushGroup("shared", data.shared);
+    pushGroup("A", data.character1);
+    pushGroup("B", data.character2);
+  } else {
+    // 平面 JSON：外觀類歸角色1，其餘歸共用
+    Object.keys(data).forEach(k=>{
+      if(k==="mode") return;
+      const grp = (resolveCatKey(k) && APPEAR.has(resolveCatKey(k))) ? "A" : "shared";
+      pushGroup(grp, { [k]: data[k] });
+    });
+  }
+  const mode = (data.mode==="duo" || data.character2 || terms.some(t=>t.group==="B")) ? "duo" : "solo";
+  return { mode, terms };
+}
+
+function doParseDecode(){
+  const raw = document.getElementById("decodeInput").value;
+  const out = document.getElementById("decodeResult");
+  if(!raw.trim()){ toast("先貼上 JSON"); return; }
+  let data;
+  try{ data = parseDecodeJSON(raw); }
+  catch(e){
+    out.innerHTML = '<div class="empty">JSON 解析失敗：'+escapeHtml(e.message)+'<br>確認整段（含大括號）都貼進來了。</div>';
+    decodeAnalysis = null; return;
+  }
+  decodeAnalysis = analyzeDecode(data);
+  renderDecodeResult(decodeAnalysis);
+}
+
+function renderDecodeResult(an){
+  const wrap = document.getElementById("decodeResult");
+  wrap.innerHTML = "";
+  if(!an.terms.length){ wrap.innerHTML = '<div class="empty">沒解析到可用的元素，檢查一下 JSON 內容。</div>'; return; }
+  const groupName = { shared:"🖼️ 共用（動作・場景・風格…）", A:"👤 角色 1 外觀", B:"👤 角色 2 外觀" };
+  const catName = id => { const c = CATEGORIES.find(x=>x.id===id); return c ? c.zh : id; };
+  const modeTag = document.createElement("div");
+  modeTag.className = "imp-grp";
+  modeTag.innerHTML = "偵測到模式：<b style='color:var(--text)'>" + (an.mode==="duo"?"雙人":"單人") + "</b>　（套用後會自動切成這個模式）";
+  wrap.appendChild(modeTag);
+
+  const section = (isNew)=>{
+    const list = an.terms.map((t,i)=>({t,i})).filter(o=>o.t.isNew===isNew);
+    if(!list.length) return;
+    const title = document.createElement("div");
+    title.className = "imp-sec-title" + (isNew?" newt":"");
+    title.textContent = isNew ? "🆕 新詞（詞庫沒有的，可勾選帶入／存庫）" : "✅ 對到既有詞庫（直接勾選帶入）";
+    wrap.appendChild(title);
+    ["shared","A","B"].forEach(g=>{
+      const gl = list.filter(o=>o.t.group===g);
+      if(!gl.length) return;
+      const gh = document.createElement("div"); gh.className = "imp-grp"; gh.textContent = groupName[g];
+      wrap.appendChild(gh);
+      gl.forEach(({t,i})=>{
+        const lb = document.createElement("label");
+        lb.className = "imp-term" + (isNew?" newt":"");
+        lb.innerHTML = '<input type="checkbox" data-i="'+i+'" checked> '
+          + escapeHtml(t.zh) + ' <span class="en">' + escapeHtml(t.en) + '</span>'
+          + (isNew ? ' <span class="imp-badge">新</span>' : '')
+          + '<span class="cat">'+ escapeHtml(catName(t.catId)) +'</span>';
+        wrap.appendChild(lb);
+      });
+    });
+  };
+  section(false);
+  section(true);
+
+  const bar = document.createElement("div");
+  bar.className = "imp-actions";
+  if(an.terms.some(t=>t.isNew)){
+    const pl = document.createElement("label");
+    pl.className = "imp-persist";
+    pl.innerHTML = '<input type="checkbox" id="decodePersist" checked> 把帶入的新詞一起存進詞庫（下次自動有）';
+    bar.appendChild(pl);
+  }
+  const applyBtn = document.createElement("button");
+  applyBtn.className = "btn"; applyBtn.textContent = "✨ 套用到組合器";
+  applyBtn.onclick = applyDecode;
+  bar.appendChild(applyBtn);
+  wrap.appendChild(bar);
+}
+
+function targetSet(catId, group){
+  if(APPEAR.has(catId)) return (group==="B") ? selB[catId] : selA[catId];
+  return sel[catId];
+}
+function catHasEn(catId, en){
+  const cat = CATEGORIES.find(c=>c.id===catId);
+  if(!cat) return false;
+  const enL = en.toLowerCase();
+  return allItems(cat).some(x=>String(x.en).toLowerCase()===enL);
+}
+function applyDecode(){
+  if(!decodeAnalysis) return;
+  const pe = document.getElementById("decodePersist");
+  const persist = pe ? pe.checked : false;
+  const checks = document.querySelectorAll("#decodeResult .imp-term input:checked");
+  if(!checks.length){ toast("先勾選要帶入的元素"); return; }
+  // 全部清空後重建（等於還原這張圖）
+  CATEGORIES.forEach(c=>{ if(APPEAR.has(c.id)){ selA[c.id].clear(); selB[c.id].clear(); } else sel[c.id].clear(); });
+  let applied = 0, added = 0;
+  checks.forEach(cb=>{
+    const t = decodeAnalysis.terms[+cb.dataset.i];
+    if(!t) return;
+    if(t.isNew && !catHasEn(t.catId, t.en)){
+      customTerms[t.catId] = customTerms[t.catId] || [];
+      customTerms[t.catId].push({ zh:t.zh, en:t.en });
+      added++;
+    }
+    targetSet(t.catId, t.group).add(t.en);
+    applied++;
+  });
+  if(added && persist) save(LS.custom, customTerms);
+  charMode = decodeAnalysis.mode; activeChar = "A";
+  renderCategories(); refresh(); renderVocab(); switchPage("builder");
+  toast("已帶入 " + applied + " 個元素" + (added ? ("，新增 " + added + " 個詞" + (persist?"並存入詞庫":"（未存庫）")) : ""));
+}
+
 /* ============ 分頁與事件 ============ */
 function switchPage(id){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.page===id));
@@ -1105,10 +1376,22 @@ function switchPage(id){
   if(id==="favorites") renderFavs();
   if(id==="history") renderHistory();
   if(id==="vocab") renderVocab();
+  if(id==="decode") renderDecode();
+}
+function renderDecode(){
+  document.getElementById("decodeInstr").textContent = buildDecodeInstruction();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick = ()=>switchPage(t.dataset.page));
 document.querySelectorAll(".out-toggle button").forEach(b=>b.onclick = ()=>setOutLang(b.dataset.lang));
 document.getElementById("subjectInput").addEventListener("input", refresh);
+
+document.getElementById("copyInstrBtn").onclick = ()=>copyText(document.getElementById("decodeInstr").textContent);
+document.getElementById("parseDecodeBtn").onclick = doParseDecode;
+document.getElementById("clearDecodeBtn").onclick = ()=>{
+  document.getElementById("decodeInput").value = "";
+  document.getElementById("decodeResult").innerHTML = "";
+  decodeAnalysis = null;
+};
 
 document.getElementById("copyBtn").onclick = ()=>{
   const txt = currentOutput();
